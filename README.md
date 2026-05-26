@@ -32,7 +32,7 @@ ASP.NET Core (Razor Pages + Minimal APIs) on **.NET 10**, with Tailwind CSS + ht
 
 ### Run it (dev — recommended)
 
-The .NET Aspire AppHost orchestrates everything for local development — it starts PostgreSQL, the web and MCP services, and a dashboard with live logs and telemetry:
+The .NET Aspire AppHost orchestrates everything for local development — it starts PostgreSQL, the web app (which serves the UI, the API, and the MCP endpoint), and a dashboard with live logs and telemetry:
 
 ```bash
 dotnet run --project src/Kairos.AppHost
@@ -42,21 +42,21 @@ Open the Aspire dashboard URL printed in the console; from there you can reach t
 
 ### Run it (full container stack)
 
-To bring up the entire stack — app, MCP, PostgreSQL, and the Grafana/Prometheus/Loki/Tempo observability stack — in containers:
+To bring up the entire stack — the app (UI + API + MCP), PostgreSQL, a reverse proxy for HTTPS, and the Grafana/Prometheus/Loki/Tempo observability stack — in containers. Dev runs the full observability stack; `compose.prod.yml` runs a pared-down OTel pipeline:
 
 ```bash
-docker compose config        # validate
-docker compose up --build
+docker compose -f compose.dev.yml config        # validate
+docker compose -f compose.dev.yml up --build
 ```
 
 ### Connecting an AI client
 
-The MCP server is exposed over Streamable HTTP at the `/mcp` endpoint of the MCP service. Point an MCP-capable client (e.g. Claude) at that URL to manage your tasks conversationally.
+The MCP server runs in-process and is exposed over Streamable HTTP at the `/mcp` endpoint of the Kairos web app. Point an MCP-capable client (e.g. Claude) at that URL to manage your tasks conversationally.
 
 ## Documentation
 
 - [docs/technology-stack.md](docs/technology-stack.md) — the canonical technology stack and architecture.
-- [docs/research.md](docs/research.md) — the rationale, benchmarks, and rejected alternatives behind the stack.
+- [docs/report-technical-design-research.md](docs/report-technical-design-research.md) — the rationale, benchmarks, MVP spec, performance budgets, and rejected alternatives behind the stack.
 
 ## License
 

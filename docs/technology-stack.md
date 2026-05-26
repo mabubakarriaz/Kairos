@@ -2,7 +2,7 @@
 
 > _"The right & opportune time to do a task."_
 
-This document lists the technologies used across the Kairos project, grouped by concern. It is the canonical reference for the stack; update it whenever a dependency or platform decision changes. Version floors and key decisions are derived from [`research.md`](research.md) — read that for the rationale, benchmarks, and rejected alternatives behind each choice.
+This document lists the technologies used across the Kairos project, grouped by concern. It is the canonical reference for the stack; update it whenever a dependency or platform decision changes. Version floors and key decisions are derived from [`report-technical-design-research.md`](report-technical-design-research.md) — read that for the rationale, benchmarks, and rejected alternatives behind each choice.
 
 ---
 
@@ -142,7 +142,7 @@ This document lists the technologies used across the Kairos project, grouped by 
 
 ## Deliberately Excluded
 
-These were evaluated in [`research.md`](research.md) and rejected for v1 — listed here so they don't creep back in:
+These were evaluated in [`report-technical-design-research.md`](report-technical-design-research.md) and rejected for v1 — listed here so they don't creep back in:
 
 | Excluded | Reason |
 |---|---|

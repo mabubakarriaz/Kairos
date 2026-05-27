@@ -10,7 +10,22 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
     <title>@ViewData["Title"] · Kairos</title>
+
+    @* Flash-free theme: resolve the stored/OS preference and set the class BEFORE first paint. *@
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem("kairos-theme");
+                var dark = saved ? saved === "dark"
+                    : window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.classList.toggle("dark", dark);
+            } catch (e) { /* localStorage unavailable — fall back to light */ }
+        })();
+    </script>
+
     @foreach (var css in Vite.Styles())
     {
         <link rel="stylesheet" href="@css" />
@@ -21,15 +36,43 @@
         <script type="module" src="@script"></script>
     }
 </head>
-<body class="h-full bg-slate-50 text-slate-800" x-data="{}">
+<body class="min-h-full bg-canvas font-sans text-ink antialiased transition-colors duration-200" x-data="{}">
     <input type="hidden" name="__RequestVerificationToken" value="@tokens.RequestToken" />
 
-    <header class="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-        <a href="/" class="text-lg font-bold tracking-tight text-kairos-block">Kairos</a>
-        <span class="text-xs text-slate-400">the right &amp; opportune time to do a task</span>
+    <header class="sticky top-0 z-40 border-b border-hairline bg-surface/80 backdrop-blur-md transition-colors duration-200">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+            <a href="/" class="group flex items-center gap-2.5">
+                <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-accent text-accent-fg shadow-block transition-transform duration-150 ease-snap group-hover:scale-105">
+                    @* Clock glyph — "the right & opportune time". *@
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 7v5l3 2" />
+                    </svg>
+                </span>
+                <span class="flex flex-col leading-none">
+                    <span class="text-base font-bold tracking-tight text-ink">Kairos</span>
+                    <span class="mt-0.5 hidden text-[11px] text-ink-faint sm:block">the right &amp; opportune time</span>
+                </span>
+            </a>
+
+            <button type="button"
+                    class="theme-toggle"
+                    title="Toggle light / dark theme"
+                    aria-label="Toggle light or dark theme"
+                    @@click="const dark = document.documentElement.classList.toggle('dark'); localStorage.setItem('kairos-theme', dark ? 'dark' : 'light')">
+                @* Sun shows in dark mode (→ switch to light); moon shows in light mode. *@
+                <svg class="hidden h-5 w-5 dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" />
+                </svg>
+                <svg class="h-5 w-5 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+            </button>
+        </div>
     </header>
 
-    <main class="mx-auto max-w-6xl px-4 py-6">
+    <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         @RenderBody()
     </main>
 </body>

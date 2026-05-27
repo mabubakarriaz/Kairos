@@ -9,7 +9,7 @@
 }
 
 @* The swap target. The drag island posts ?handler=Reschedule targeting this element. *@
-<div id="@dayId" class="sortable-day rounded-lg border border-slate-200 bg-white"
+<div id="@dayId" class="sortable-day"
      data-date="@Model.Date.ToString("yyyy-MM-dd")"
      style="height:@Px(1440 * pxmin)">
 
@@ -28,7 +28,7 @@
     {
         var top = Model.TopPx(slot.StartUtc);
         var height = Model.HeightPx(slot.StartUtc, slot.EndUtc);
-        <div class="freeslot flex items-start justify-center pt-0.5" style="top:@Px(top);height:@Px(height)">
+        <div class="freeslot" style="top:@Px(top);height:@Px(height)">
             free · @((int)slot.Duration.TotalMinutes)m
         </div>
     }
@@ -52,20 +52,4 @@
 </div>
 
 @* Out-of-band: keep the best-free-slots panel in sync after add/reschedule. *@
-<aside id="freeslots" hx-swap-oob="true" class="space-y-2">
-    <h2 class="text-sm font-semibold text-slate-600">Best free slots</h2>
-    @if (Model.BestSlots.Count == 0)
-    {
-        <p class="text-xs text-slate-400">No open slots in working hours.</p>
-    }
-    else
-    {
-        @foreach (var slot in Model.BestSlots)
-        {
-            <div class="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-800">
-                @slot.StartUtc.ToString("HH:mm")–@slot.EndUtc.ToString("HH:mm") UTC
-                <span class="text-emerald-500">(@((int)slot.Duration.TotalMinutes)m)</span>
-            </div>
-        }
-    }
-</aside>
+<partial name="Partials/_FreeSlotsPanel" model="Model" />

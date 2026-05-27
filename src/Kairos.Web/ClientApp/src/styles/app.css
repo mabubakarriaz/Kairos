@@ -2,41 +2,255 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design tokens. One semantic set, two themes. Tailwind colors (tailwind.config.js)
+   resolve to these variables, and the component layer below reads them directly,
+   so flipping `.dark` on <html> re-themes the whole app in one stroke.
+   Values are space-separated RGB triplets so `rgb(var(--x) / <alpha>)` works.
+   ───────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --bg: 246 247 249;
+    --surface: 255 255 255;
+    --surface-2: 244 246 249;
+
+    --border: 226 231 239;
+    --border-strong: 203 213 225;
+
+    --text: 17 24 39;
+    --text-muted: 100 116 139;
+    --text-faint: 148 163 184;
+
+    --accent: 37 99 235;          /* blue-600  — Kairos task blocks */
+    --accent-strong: 29 78 216;   /* blue-700  — block text / hover */
+    --accent-fg: 255 255 255;
+
+    --gcal: 147 51 234;           /* purple-600 — read-only Google busy */
+    --gcal-strong: 109 40 217;
+
+    --free: 16 185 129;           /* emerald-500 — open slots */
+    --free-strong: 4 120 87;
+
+    --now: 239 68 68;             /* red-500 — current-time line */
+
+    --grid-minor: 241 245 249;
+    --grid-major: 226 232 240;
+
+    --offhours: 100 116 139;
+    --offhours-a: 0.10;
+
+    --shadow: 15 23 42;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --bg: 13 17 23;               /* deep slate canvas, faintly blue */
+    --surface: 22 27 34;
+    --surface-2: 30 36 46;
+
+    --border: 42 50 63;
+    --border-strong: 58 68 84;
+
+    --text: 226 232 240;
+    --text-muted: 148 163 184;
+    --text-faint: 100 116 139;
+
+    --accent: 96 165 250;         /* blue-400 — brighter to carry on dark */
+    --accent-strong: 147 197 253; /* blue-300 */
+    --accent-fg: 9 14 24;
+
+    --gcal: 192 132 252;          /* purple-400 */
+    --gcal-strong: 216 180 254;
+
+    --free: 52 211 153;           /* emerald-400 */
+    --free-strong: 110 231 183;
+
+    --now: 248 113 113;           /* red-400 */
+
+    --grid-minor: 28 34 44;
+    --grid-major: 42 50 63;
+
+    --offhours: 0 0 0;
+    --offhours-a: 0.28;
+
+    --shadow: 0 0 0;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
 @layer components {
-  /* The vertical day column. 96px/hour → 1.6px/min; a 15-min slot ≈ 24px. JS/Razor read --pxmin. */
+  /* ── App chrome ──────────────────────────────────────────────────────────── */
+
+  /* A surface card: the standard raised container for forms/panels. */
+  .card {
+    @apply rounded-2xl border border-hairline bg-surface shadow-card;
+  }
+
+  /* Segmented control used for day navigation (‹ Today ›). */
+  .seg {
+    @apply inline-flex items-center rounded-xl border border-hairline bg-surface p-0.5 shadow-card;
+  }
+  .seg-btn {
+    @apply inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-3 text-sm font-medium text-ink-muted;
+    @apply transition-colors duration-150 hover:bg-raised hover:text-ink;
+  }
+
+  /* The tiny "UTC" pill next to the date. */
+  .pill {
+    @apply inline-flex items-center rounded-md bg-raised px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint ring-1 ring-hairline;
+  }
+  .pill-today {
+    @apply inline-flex items-center rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-strong ring-1 ring-accent/20;
+  }
+
+  .theme-toggle {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl border border-hairline bg-surface text-ink-muted shadow-card;
+    @apply transition-colors duration-150 hover:bg-raised hover:text-ink;
+  }
+
+  /* ── Form primitives ─────────────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-accent-fg shadow-block;
+    @apply transition-all duration-150 ease-snap hover:bg-accent-strong hover:shadow-lift active:scale-[0.98] disabled:opacity-50 disabled:shadow-none;
+  }
+  .field {
+    @apply rounded-lg border border-hairline bg-raised px-2.5 py-2 text-sm text-ink placeholder:text-ink-faint;
+    @apply transition-colors duration-150 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-ink-muted;
+  }
+
+  /* ── The day column (vertical 15-min grid) ───────────────────────────────── */
+  /* 96px/hour → 1.6px/min; a 15-min slot ≈ 24px. JS/Razor read --pxmin. */
   .sortable-day {
     --pxmin: 1.6px;
     position: relative;
+    @apply overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card;
     /* 15-min minor lines + solid hour lines, painted as a background gradient. */
     background-image:
-      repeating-linear-gradient(to bottom, rgb(241 245 249) 0 1px, transparent 1px 24px),
-      repeating-linear-gradient(to bottom, rgb(203 213 225) 0 1px, transparent 1px 96px);
+      repeating-linear-gradient(to bottom, rgb(var(--grid-minor)) 0 1px, transparent 1px 24px),
+      repeating-linear-gradient(to bottom, rgb(var(--grid-major)) 0 1px, transparent 1px 96px);
   }
 
-  /* A positioned time block (top/height set inline from minutes). */
+  /* A positioned time block (top/height set inline from minutes). The premium look:
+     a tinted fill + a saturated left rail + colored text — legible on both themes. */
   .block {
-    @apply absolute left-12 right-2 rounded-md px-2 py-1 text-xs text-white shadow-sm overflow-hidden cursor-grab select-none;
+    @apply absolute left-16 right-3 overflow-hidden rounded-lg px-2.5 py-1 shadow-block select-none;
+    @apply cursor-grab transition-all duration-150 ease-snap;
+    border-left: 3px solid transparent;
   }
-  .block-kairos { @apply bg-kairos-block/90 hover:bg-kairos-block; }
-  .block-gcal   { @apply bg-kairos-gcal/80 cursor-default; }
-  .block-title  { @apply font-semibold truncate; }
-  .block-time   { @apply text-[10px] opacity-90; }
+  .block:hover {
+    @apply shadow-lift;
+    z-index: 15;
+  }
+  .block-kairos {
+    background-color: rgb(var(--accent) / 0.14);
+    border-left-color: rgb(var(--accent));
+    color: rgb(var(--accent-strong));
+  }
+  .block-kairos:hover {
+    background-color: rgb(var(--accent) / 0.22);
+  }
+  /* Google busy blocks: read-only, hatched to signal "external / not editable". */
+  .block-gcal {
+    @apply cursor-default;
+    background-color: rgb(var(--gcal) / 0.12);
+    border-left-color: rgb(var(--gcal));
+    color: rgb(var(--gcal-strong));
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent 0 6px,
+      rgb(var(--gcal) / 0.10) 6px 12px
+    );
+  }
+  .block-title { @apply truncate text-xs font-semibold leading-tight; }
+  .block-time  { @apply truncate text-[10px] font-medium opacity-70; }
 
-  /* Dashed ghost marking a free gap (drop target / suggestion). */
+  /* Dashed ghost marking a free gap in the grid (visual drop-target hint). */
   .freeslot {
-    @apply absolute left-12 right-2 rounded-md border-2 border-dashed border-emerald-400/70 bg-emerald-50/40 text-[10px] text-emerald-700;
+    @apply absolute left-16 right-3 flex items-start justify-center rounded-lg pt-0.5 text-[10px] font-medium;
+    border: 1.5px dashed rgb(var(--free) / 0.55);
+    background-color: rgb(var(--free) / 0.07);
+    color: rgb(var(--free-strong));
   }
 
-  .now-line { @apply absolute left-0 right-0 h-0.5 bg-red-500 z-20; }
-  .now-line::before { content: ""; @apply absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500; }
+  /* Current-time line — nudged every 30s by htmx, not SignalR. */
+  .now-line {
+    @apply absolute left-14 right-2 z-30;
+    height: 2px;
+    background: rgb(var(--now));
+  }
+  .now-line::before {
+    content: "";
+    @apply absolute -left-1.5 h-2.5 w-2.5 rounded-full;
+    top: -4px;
+    background: rgb(var(--now));
+    box-shadow: 0 0 0 4px rgb(var(--now) / 0.18);
+  }
 
-  /* Working-hours masking: dim, don't hide. */
-  .offhours { @apply absolute left-0 right-0 bg-slate-200/40 pointer-events-none; }
+  /* Working-hours masking: dim off-hours, don't hide them. */
+  .offhours {
+    @apply pointer-events-none absolute left-0 right-0;
+    background-color: rgb(var(--offhours) / var(--offhours-a));
+  }
 
-  .hour-label { @apply absolute -translate-y-1/2 left-0 w-10 text-right pr-1 text-[10px] text-slate-400; }
+  .hour-label {
+    @apply absolute left-0 w-14 -translate-y-1/2 pr-2.5 text-right text-[10px] font-medium tabular-nums text-ink-faint;
+  }
 
-  .drag-ghost { @apply opacity-40 ring-2 ring-kairos-block; }
+  /* ── Free-slots side panel (clickable suggestions) ───────────────────────── */
+  .freeslot-chip {
+    @apply flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs;
+    @apply transition-all duration-150 ease-snap cursor-pointer;
+    border-color: rgb(var(--free) / 0.35);
+    background-color: rgb(var(--free) / 0.08);
+    color: rgb(var(--free-strong));
+  }
+  .freeslot-chip:hover {
+    border-color: rgb(var(--free) / 0.6);
+    background-color: rgb(var(--free) / 0.16);
+    @apply -translate-y-px shadow-card;
+  }
+  .freeslot-chip:focus-visible {
+    @apply outline-none ring-2 ring-offset-1;
+    --tw-ring-color: rgb(var(--free) / 0.5);
+    --tw-ring-offset-color: rgb(var(--surface));
+  }
 
-  .btn { @apply inline-flex items-center rounded-md bg-kairos-block px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50; }
-  .field { @apply rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-kairos-block focus:outline-none focus:ring-1 focus:ring-kairos-block; }
+  /* ── Drag affordances (SortableJS injects these classes) ─────────────────── */
+  .drag-ghost {
+    @apply rounded-lg opacity-0;
+  }
+  .sortable-chosen { @apply cursor-grabbing; }
+  .sortable-drag {
+    @apply shadow-lift;
+    opacity: 1 !important;
+    cursor: grabbing;
+  }
+
+  /* Thin, themed scrollbar for the schedule scroll area. */
+  .scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--border-strong)) transparent;
+  }
+  .scroll-area::-webkit-scrollbar { width: 10px; }
+  .scroll-area::-webkit-scrollbar-track { background: transparent; }
+  .scroll-area::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--border-strong));
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  .scroll-area::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--text-faint));
+    background-clip: content-box;
+  }
 }

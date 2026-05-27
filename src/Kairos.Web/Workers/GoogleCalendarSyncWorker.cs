@@ -9,7 +9,7 @@ namespace Kairos.Web.Workers;
 /// Google client). Registered only when the GoogleCalendarSync feature flag is on, so its dependency
 /// is never resolved while the flag is off (the MVP default).
 /// </summary>
-public sealed class GoogleCalendarSyncWorker(
+public sealed partial class GoogleCalendarSyncWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<GoogleCalendarSyncWorker> logger) : BackgroundService
 {
@@ -17,7 +17,7 @@ public sealed class GoogleCalendarSyncWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("GoogleCalendarSyncWorker started (jittered ~5 min cadence).");
+        LogStarted(logger);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -29,7 +29,7 @@ public sealed class GoogleCalendarSyncWorker(
                 var upserted = await importer.SyncOnceAsync(stoppingToken);
                 KairosTelemetry.GcalSyncLagSeconds.Record(0);   // just synced → zero lag
                 activity?.SetTag("gcal.upserted", upserted);
-                logger.LogInformation("gcal.sync.cycle upserted {Count} busy blocks.", upserted);
+                LogCycleCompleted(logger, upserted);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -38,7 +38,7 @@ public sealed class GoogleCalendarSyncWorker(
             catch (Exception ex)
             {
                 // Never let a sync failure kill the worker; back off and retry next cycle.
-                logger.LogError(ex, "Google Calendar sync cycle failed; will retry next interval.");
+                LogCycleFailed(logger, ex);
             }
 
             await Task.Delay(NextInterval(), stoppingToken);
@@ -51,4 +51,14 @@ public sealed class GoogleCalendarSyncWorker(
         var jitter = (Random.Shared.NextDouble() - 0.5) * 0.5;   // [-0.25, +0.25]
         return BaseInterval * (1 + jitter);
     }
+
+    // Source-generated logging (CA1873): no boxing/arg evaluation when the level is disabled.
+    [LoggerMessage(Level = LogLevel.Information, Message = "GoogleCalendarSyncWorker started (jittered ~5 min cadence).")]
+    private static partial void LogStarted(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "gcal.sync.cycle upserted {Count} busy blocks.")]
+    private static partial void LogCycleCompleted(ILogger logger, int count);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Google Calendar sync cycle failed; will retry next interval.")]
+    private static partial void LogCycleFailed(ILogger logger, Exception ex);
 }

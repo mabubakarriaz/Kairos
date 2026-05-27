@@ -16,7 +16,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 # Restore against just the project files first for layer caching.
 COPY Directory.Build.props ./
-COPY Kairos.sln ./
+COPY Kairos.slnx ./
 COPY src/Kairos.Web/Kairos.Web.csproj src/Kairos.Web/
 COPY src/Kairos.ServiceDefaults/Kairos.ServiceDefaults.csproj src/Kairos.ServiceDefaults/
 COPY src/Kairos.Domain/Kairos.Domain.csproj src/Kairos.Domain/

@@ -30,6 +30,9 @@ services:
       ConnectionStrings__kairosdb: "Host=postgres;Database=kairosdb;Username=kairos;Password=kairos;Max Auto Prepare=20;Auto Prepare Min Usages=2"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+      # Caddy reverse-proxies via h2c (HTTP/2 cleartext). Over plaintext Kestrel only speaks
+      # HTTP/2 when the endpoint is Http2-only (no ALPN to negotiate) — otherwise Caddy gets 502.
+      Kestrel__EndpointDefaults__Protocols: "Http2"
     volumes:
       - dpkeys:/keys          # Data Protection keys (OAuth tokens encrypted at rest)
       - kairos_files:/files

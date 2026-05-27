@@ -1,0 +1,36 @@
+@using Kairos.Web.Frontend
+@inject ViteManifest Vite
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    // Emit the antiforgery token so main.ts can attach it as the RequestVerificationToken header.
+    var tokens = Antiforgery.GetAndStoreTokens(Context);
+}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · Kairos</title>
+    @foreach (var css in Vite.Styles())
+    {
+        <link rel="stylesheet" href="@css" />
+    }
+    @{ var script = Vite.Script(); }
+    @if (script is not null)
+    {
+        <script type="module" src="@script"></script>
+    }
+</head>
+<body class="h-full bg-slate-50 text-slate-800" x-data="{}">
+    <input type="hidden" name="__RequestVerificationToken" value="@tokens.RequestToken" />
+
+    <header class="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
+        <a href="/" class="text-lg font-bold tracking-tight text-kairos-block">Kairos</a>
+        <span class="text-xs text-slate-400">the right &amp; opportune time to do a task</span>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-6">
+        @RenderBody()
+    </main>
+</body>
+</html>

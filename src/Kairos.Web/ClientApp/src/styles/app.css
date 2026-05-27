@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* The vertical day column. 96px/hour → 1.6px/min; a 15-min slot ≈ 24px. JS/Razor read --pxmin. */
+  .sortable-day {
+    --pxmin: 1.6px;
+    position: relative;
+    /* 15-min minor lines + solid hour lines, painted as a background gradient. */
+    background-image:
+      repeating-linear-gradient(to bottom, rgb(241 245 249) 0 1px, transparent 1px 24px),
+      repeating-linear-gradient(to bottom, rgb(203 213 225) 0 1px, transparent 1px 96px);
+  }
+
+  /* A positioned time block (top/height set inline from minutes). */
+  .block {
+    @apply absolute left-12 right-2 rounded-md px-2 py-1 text-xs text-white shadow-sm overflow-hidden cursor-grab select-none;
+  }
+  .block-kairos { @apply bg-kairos-block/90 hover:bg-kairos-block; }
+  .block-gcal   { @apply bg-kairos-gcal/80 cursor-default; }
+  .block-title  { @apply font-semibold truncate; }
+  .block-time   { @apply text-[10px] opacity-90; }
+
+  /* Dashed ghost marking a free gap (drop target / suggestion). */
+  .freeslot {
+    @apply absolute left-12 right-2 rounded-md border-2 border-dashed border-emerald-400/70 bg-emerald-50/40 text-[10px] text-emerald-700;
+  }
+
+  .now-line { @apply absolute left-0 right-0 h-0.5 bg-red-500 z-20; }
+  .now-line::before { content: ""; @apply absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500; }
+
+  /* Working-hours masking: dim, don't hide. */
+  .offhours { @apply absolute left-0 right-0 bg-slate-200/40 pointer-events-none; }
+
+  .hour-label { @apply absolute -translate-y-1/2 left-0 w-10 text-right pr-1 text-[10px] text-slate-400; }
+
+  .drag-ghost { @apply opacity-40 ring-2 ring-kairos-block; }
+
+  .btn { @apply inline-flex items-center rounded-md bg-kairos-block px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50; }
+  .field { @apply rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-kairos-block focus:outline-none focus:ring-1 focus:ring-kairos-block; }
+}

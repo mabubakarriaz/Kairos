@@ -1,0 +1,73 @@
+# Grafana unified-alerting provisioning — alert on the research-report NFR budgets, not RED noise.
+# Thresholds (from docs/research.md): schedule.render p95 ≤ 300ms · htmx swap p95 ≤ 50ms / p99 ≤ 120ms ·
+# Postgres window query p95 ≤ 5ms · free-slots query p95 ≤ 10ms · gcal sync lag ≤ 7min.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: kairos-nfr-budgets
+    folder: Kairos
+    interval: 1m
+    rules:
+      - uid: htmx-swap-p95
+        title: htmx partial swap p95 > 50ms
+        condition: THRESHOLD
+        for: 5m
+        data:
+          - refId: P95
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, sum by (le) (rate(kairos_htmx_partial_swap_seconds_bucket[5m])))
+              instant: true
+              refId: P95
+          - refId: THRESHOLD
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: P95
+              conditions:
+                - evaluator: { type: gt, params: [0.05] }
+        labels: { severity: warning, budget: htmx_swap }
+        annotations: { summary: "htmx swap p95 over the 50ms budget." }
+
+      - uid: pg-window-query-p95
+        title: Postgres day-window query p95 > 5ms
+        condition: THRESHOLD
+        for: 5m
+        data:
+          - refId: P95
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: histogram_quantile(0.95, sum by (le) (rate(kairos_postgres_query_seconds_bucket{query="day_window"}[5m])))
+              instant: true
+              refId: P95
+          - refId: THRESHOLD
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: P95
+              conditions:
+                - evaluator: { type: gt, params: [0.005] }
+        labels: { severity: warning, budget: pg_window_query }
+        annotations: { summary: "Postgres window query p95 over the 5ms budget." }
+
+      - uid: gcal-sync-lag
+        title: Google Calendar sync lag > 7 min
+        condition: THRESHOLD
+        for: 5m
+        data:
+          - refId: LAG
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model: { expr: max(kairos_gcal_sync_lag_seconds), instant: true, refId: LAG }
+          - refId: THRESHOLD
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: LAG
+              conditions:
+                - evaluator: { type: gt, params: [420] }
+        labels: { severity: warning, budget: gcal_sync_lag }
+        annotations: { summary: "Google Calendar sync lag exceeds 7 minutes." }

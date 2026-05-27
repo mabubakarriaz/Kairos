@@ -1,0 +1,6 @@
+# Reverse proxy — terminates HTTPS on loopback so the browser sees TLS.
+# The app speaks HTTP/2 cleartext (h2c) behind the proxy. No HTTP/3 on loopback (it buys nothing).
+# Caddy manages its own local cert for `localhost`.
+localhost {
+	reverse_proxy h2c://web:8080
+}

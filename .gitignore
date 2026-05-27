@@ -55,3 +55,11 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Kairos frontend build outputs
+**/node_modules/
+src/Kairos.Web/wwwroot/dist/
+
+# Aspire / compose generated
+.env
+aspire-output/

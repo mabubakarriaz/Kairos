@@ -1,0 +1,71 @@
+@model Kairos.Web.Pages.IndexModel
+@{
+    var pxmin = Kairos.Web.Pages.IndexModel.PxPerMinute;
+    double Min(TimeOnly t) => t.ToTimeSpan().TotalMinutes;
+    string Px(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "px";
+    var dayId = $"day-{Model.Date:yyyy-MM-dd}";
+    var workTopH = Min(Model.WorkingStart) * pxmin;
+    var workBottomTop = Min(Model.WorkingEnd) * pxmin;
+}
+
+@* The swap target. The drag island posts ?handler=Reschedule targeting this element. *@
+<div id="@dayId" class="sortable-day rounded-lg border border-slate-200 bg-white"
+     data-date="@Model.Date.ToString("yyyy-MM-dd")"
+     style="height:@Px(1440 * pxmin)">
+
+    @* Off-hours dimming (don't hide) *@
+    <div class="offhours" style="top:0;height:@Px(workTopH)"></div>
+    <div class="offhours" style="top:@Px(workBottomTop);height:@Px((1440 - Min(Model.WorkingEnd)) * pxmin)"></div>
+
+    @* Hour gutter labels *@
+    @for (var h = 0; h <= 23; h++)
+    {
+        <div class="hour-label" style="top:@Px(h * 60 * pxmin)">@($"{h:00}:00")</div>
+    }
+
+    @* Free-slot ghosts (drop targets / suggestions) *@
+    @foreach (var slot in Model.FreeSlotsForDay)
+    {
+        var top = Model.TopPx(slot.StartUtc);
+        var height = Model.HeightPx(slot.StartUtc, slot.EndUtc);
+        <div class="freeslot flex items-start justify-center pt-0.5" style="top:@Px(top);height:@Px(height)">
+            free · @((int)slot.Duration.TotalMinutes)m
+        </div>
+    }
+
+    @* Scheduled blocks — Kairos tasks (draggable) + read-only Google busy blocks *@
+    @foreach (var block in Model.Day.Blocks)
+    {
+        var top = Model.TopPx(block.StartUtc);
+        var height = Model.HeightPx(block.StartUtc, block.EndUtc);
+        var durationMin = (int)block.Duration.TotalMinutes;
+        var cls = block.IsGcal ? "block block-gcal" : "block block-kairos";
+        <div class="@cls" style="top:@Px(top);height:@Px(height)"
+             data-block-id="@block.Id" data-duration-min="@durationMin">
+            <div class="block-title">@block.Title</div>
+            <div class="block-time">@block.StartUtc.ToString("HH:mm")–@block.EndUtc.ToString("HH:mm") UTC</div>
+        </div>
+    }
+
+    @* The 30s-refreshed "now" line *@
+    <partial name="Partials/_NowLine" model="Model" />
+</div>
+
+@* Out-of-band: keep the best-free-slots panel in sync after add/reschedule. *@
+<aside id="freeslots" hx-swap-oob="true" class="space-y-2">
+    <h2 class="text-sm font-semibold text-slate-600">Best free slots</h2>
+    @if (Model.BestSlots.Count == 0)
+    {
+        <p class="text-xs text-slate-400">No open slots in working hours.</p>
+    }
+    else
+    {
+        @foreach (var slot in Model.BestSlots)
+        {
+            <div class="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-800">
+                @slot.StartUtc.ToString("HH:mm")–@slot.EndUtc.ToString("HH:mm") UTC
+                <span class="text-emerald-500">(@((int)slot.Duration.TotalMinutes)m)</span>
+            </div>
+        }
+    }
+</aside>

@@ -1,0 +1,19 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.3.5">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kairos.Web\Kairos.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.3.5" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>118d12dc-bb05-41a4-9549-8ddd3413cfbb</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

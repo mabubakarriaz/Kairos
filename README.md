@@ -19,7 +19,7 @@ ASP.NET Core (Razor Pages + Minimal APIs) on **.NET 10**, with Tailwind CSS + ht
 
 ## Status
 
-🚧 **Early development.** The design is complete (see [`docs/`](docs/)) and the application is being scaffolded slice by slice. The instructions below describe how the project is intended to be built and run.
+🟢 **MVP scaffolded.** The full stack is in place — solution, Clean Architecture layers, the PostgreSQL range/multirange schema (with the no-overlap exclusion constraint + SQL free-slot finder), the time-blocked schedule view (add a task with a time range → it renders as a block; drag to reschedule), the in-process MCP server, OpenTelemetry, the dev/prod compose split, and the xUnit + Testcontainers + Aspire test tiers. Google Calendar sync (Slice 4) and recurring blocks (Slice 5) are scaffolded behind feature flags but off by default.
 
 ## Getting started
 
@@ -52,6 +52,39 @@ docker compose -f compose.dev.yml up --build
 ### Connecting an AI client
 
 The MCP server runs in-process and is exposed over Streamable HTTP at the `/mcp` endpoint of the Kairos web app. Point an MCP-capable client (e.g. Claude) at that URL to manage your tasks conversationally.
+
+## Feature flags
+
+Each vertical slice ships behind a boolean in `src/Kairos.Web/appsettings.json` (`Features` section) so it's independently demoable:
+
+| Flag | Default | What it gates |
+|---|---|---|
+| `ScheduleView` | `true` | Schedule view + add tasks with time ranges (the MVP) |
+| `FreeSlotSuggestions` | `true` | Top-N free-slot suggestions panel |
+| `Mcp` | `true` | In-process MCP server at `/mcp` |
+| `GoogleCalendarSync` | `false` | Google Calendar read-only busy import (Slice 4) |
+| `RecurringBlocks` | `false` | Recurring Kairos blocks via `rrule` (Slice 5) |
+
+## Develop & test (mirrors CI — run before pushing)
+
+```bash
+dotnet tool restore                               # pinned dotnet-ef
+dotnet format --verify-no-changes                 # style/analyzer gate
+dotnet build -c Release                           # warnings-as-errors
+dotnet test                                       # unit + integration (Testcontainers) + app-model (Aspire); needs Docker
+node scripts/check-bundle-size.mjs                # ≤ 80 KB gzipped JS gate (after the Vite build)
+npx playwright test                               # tests/e2e — TTI + drop→DB budgets
+k6 run tests/load/schedule_swap.js                # htmx-swap + Postgres-query p95/p99 budgets
+```
+
+`.github/workflows/ci.yml` runs the same gates on every PR; `publish.yml` pushes the `web` image to GHCR on a `v*` tag. GitFlow: feature branch per slice → `develop` → `main`, tag `v0.N` on release.
+
+## Backups (rehearsed, not assumed)
+
+```powershell
+pwsh scripts/backup.ps1          # nightly pg_dump -Fc + GFS retention (14 daily / 8 weekly / 12 monthly)
+pwsh scripts/restore-drill.ps1   # throwaway container + pg_restore + assert tasks reappear (rehearse in Slice 0)
+```
 
 ## Documentation
 

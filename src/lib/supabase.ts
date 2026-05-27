@@ -14,8 +14,11 @@ let client: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient {
   if (client) return client;
 
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Tolerate a pasted trailing slash / stray whitespace — a trailing slash makes
+  // supabase-js build "https://…supabase.co//rest/v1/…", which the gateway rejects
+  // with "Invalid path specified in request URL".
+  const url = process.env.SUPABASE_URL?.trim().replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) {
     throw new Error(
       "Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY. Copy .env.example to .env.local and fill them in (see docs/SUPABASE_SETUP.md).",

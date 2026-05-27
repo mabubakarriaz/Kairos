@@ -1,88 +1,29 @@
-name: ci
+name: CI
+
+# Quality gate for pull requests and non-main pushes: lint, type-check, build.
+# No secrets needed — the app's Supabase client is created lazily, so `next build`
+# succeeds without any environment variables.
 
 on:
   pull_request:
   push:
-    branches: [develop, main]
-
-permissions:
-  contents: read
+    branches-ignore: [main]
 
 jobs:
-  build-test:
-    # Docker-enabled runner: Testcontainers + Aspire.Hosting.Testing need a Docker daemon.
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-
       - uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: 20
+          cache: npm
 
-      # ── Cheap → expensive: fail fast ────────────────────────────────────────
-      - run: dotnet restore
+      - run: npm ci
 
-      - name: Format / analyzer gate
-        run: dotnet format --verify-no-changes
+      - run: npm run lint
 
-      - name: Build (warnings-as-errors)
-        run: dotnet build --no-restore -c Release
-
-      - name: Test (unit + integration[Testcontainers] + app-model[Aspire])
-        run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage"
-
-      # ── Front-end assets + budget gates ─────────────────────────────────────
-      - name: Install ClientApp deps
-        run: npm ci --prefix src/Kairos.Web/ClientApp
-
-      - name: Build front-end bundle
-        run: npm run build --prefix src/Kairos.Web/ClientApp
-
-      - name: Bundle-size gate (≤ 80 KB gzipped initial JS)
-        run: node scripts/check-bundle-size.mjs
-
-  e2e-budgets:
-    # Playwright + k6 NFR budget gates run against the full containerized stack.
-    runs-on: ubuntu-latest
-    needs: build-test
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
-
-      - name: Bring up the stack
-        run: docker compose -f compose.dev.yml up -d --build
-
-      - name: Wait for the app
-        run: |
-          for i in $(seq 1 60); do
-            curl -fsk https://localhost/alive && break || sleep 2;
-          done
-
-      - name: Playwright E2E + perf traces (TTI, drop→DB ≤ 100 ms)
-        working-directory: tests/e2e
-        env:
-          KAIROS_BASE_URL: https://localhost
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
-          npx playwright test
-
-      - name: k6 budget gates (htmx swap / Postgres query p95/p99)
-        uses: grafana/setup-k6-action@v1
-      - name: Run k6
-        env:
-          KAIROS_BASE_URL: https://localhost
-        run: k6 run tests/load/schedule_swap.js
-
-      - name: Tear down
-        if: always()
-        run: docker compose -f compose.dev.yml down -v
+      # `next build` type-checks the whole app (and generates next-env.d.ts), so it
+      # is the authoritative type gate — no separate `tsc` step needed.
+      - run: npm run build

@@ -5,19 +5,17 @@ description: "Build the Kairos data layer — PostgreSQL 17 (btree_gist, range/m
 
 # database-builder
 
-Build the Kairos data layer exactly as specified in [docs/technology-stack.md](../../../docs/technology-stack.md). This skill is the procedural companion to that document for persistence: the tech-stack doc decides *what* the database stack is, this skill decides *how* to model, migrate, and provision it consistently. The data layer lives in `Kairos.Infrastructure` and is consumed by the application services the other builders call.
+Build the Kairos data layer the way the **Database** stack slice this skill owns prescribes. This skill is the *procedural companion* to that slice for persistence: the slice decides **what** the database stack is, this skill decides **how** to model, migrate, and provision it consistently. The data layer lives in `Kairos.Infrastructure` and is consumed by the application services the other builders call.
 
-**Read [docs/technology-stack.md](../../../docs/technology-stack.md) first** — it is the source of truth. [docs/report-technical-design-research.md](../../../docs/report-technical-design-research.md) holds the canonical schema, the free-slot SQL, the GiST/planner rationale, and the temporal-modeling sources. If anything here conflicts with the tech-stack doc, the doc wins; update this skill to match.
+## References — read when you need them
 
-## Canonical data stack (from the tech-stack doc)
+Keep this file lean. The *what* (the stack) and the underlying *patterns* live in two companion files next to this skill; load them when the task calls for it instead of restating them here:
 
-- **Database:** **PostgreSQL 17** — runs as `postgres:17-alpine`, provisioned via Aspire. **PG 14+ is a hard floor** — multiranges are non-negotiable
-- **ORM / access:** **Entity Framework Core 10** — code-first, LINQ; `AsNoTracking` reads, `AsSplitQuery` on block+task projections, compiled queries for hot paths
-- **Driver/provider:** **Npgsql** (`Npgsql.EntityFrameworkCore.PostgreSQL`) — maps `tstzrange` → `NpgsqlRange<DateTime>` natively; set `MaxAutoPrepare=20`, `AutoPrepareMinUsages=2`
-- **Extensions:** **`btree_gist`** (GiST index + exclusion constraint), **range/multirange types**, **`auto_explain`** (`log_min_duration=50ms`), **`pg_stat_statements`** (query latency)
-- **Schema management:** **EF Core Migrations** — versioned, applied at startup (dev, guarded) or via migration bundles
-- **Dev admin (optional):** **pgAdmin** container (guarded by `IsRunMode` in the AppHost)
-- **Aspire integration:** `Aspire.Npgsql.EntityFrameworkCore.PostgreSQL` wires connection strings + health checks + telemetry
+- **[references/technology-stack.md](references/technology-stack.md)** — the **Database** stack slice this skill owns: PostgreSQL 17 (`btree_gist`, range/multirange, `auto_explain`, `pg_stat_statements`), EF Core 10 + Npgsql with the tuning settings, EF Migrations, optional pgAdmin, the Aspire Npgsql integration. Read it before scaffolding, or whenever you need an exact version, extension, or tuning setting.
+- **[references/design-pattern.md](references/design-pattern.md)** — the patterns that shape this slice: **Data Mapper / Repository / Unit of Work** (the backbone), plus **Builder** (model configuration), **Strategy** (value converters), **Factory Method** (`IDbContextFactory`). Read it before designing the `DbContext`, entity configurations, or repositories.
+- The canonical schema, the free-slot SQL, the GiST/planner rationale, and the temporal-modeling sources are in [docs/research.md](../../../docs/research.md) — consult it for *why*.
+
+If anything here conflicts with the tech-stack slice (or the cross-cutting [index](../../../docs/technology-stack.md)), the slice wins — update this skill to match.
 
 > **Guiding principle:** schema is code. Every change is a reviewed migration in source control — never hand-edited in the running DB. And **free slots are computed in SQL, not C#** — `unnest(work_mr - range_agg(busy))` returns gaps directly; only top-N ranking of those rows happens in C#.
 

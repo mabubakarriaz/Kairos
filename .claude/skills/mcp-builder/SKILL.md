@@ -5,17 +5,17 @@ description: "Build the Kairos MCP server — mapped in-process at /mcp inside K
 
 # mcp-builder
 
-Build the Kairos MCP server exactly as specified in [docs/technology-stack.md](../../../docs/technology-stack.md). This skill is the procedural companion to that document for the AI-integration layer: the tech-stack doc decides *what* the MCP stack is, this skill decides *how* to expose Kairos to AI agents consistently. The MCP server is **not** a separate service — it is mapped in-process inside `Kairos.Web` and delegates to the same application services the Razor Pages and APIs use.
+Build the Kairos MCP server the way the **AI Integration (MCP)** stack slice this skill owns prescribes. This skill is the *procedural companion* to that slice for the AI-integration layer: the slice decides **what** the MCP stack is, this skill decides **how** to expose Kairos to AI agents consistently. The MCP server is **not** a separate service — it is mapped in-process inside `Kairos.Web` and delegates to the same application services the Razor Pages and APIs use.
 
-**Read [docs/technology-stack.md](../../../docs/technology-stack.md) first** — it is the source of truth. [docs/report-technical-design-research.md](../../../docs/report-technical-design-research.md) §3 shows the tool sketches and the "MCP piggybacks on ASP.NET Core for free" rationale. If anything here conflicts with the tech-stack doc, the doc wins; update this skill to match.
+## References — read when you need them
 
-## Canonical MCP stack (from the tech-stack doc)
+Keep this file lean. The *what* (the stack) and the underlying *patterns* live in two companion files next to this skill; load them when the task calls for it instead of restating them here:
 
-- **Protocol:** **Model Context Protocol (MCP)** — exposes Kairos so AI clients can read tasks and add/remove/reschedule items and query free slots
-- **SDK:** **`ModelContextProtocol`** (C# SDK, 1.x) — official (Microsoft + Anthropic); handles JSON-RPC framing & tool discovery. **Pin the version** — spec & SDK are still moving
-- **Hosting transport:** **`ModelContextProtocol.AspNetCore`** — `AddMcpServer().WithHttpTransport().WithToolsFromAssembly()` + `app.MapMcp("/mcp")`; **Streamable HTTP / SSE**
-- **Topology:** **same process as the app** — `/mcp` is a route inside `Kairos.Web`. There is **no separate `Kairos.Mcp` project, container, or `mcp` Aspire resource** (this supersedes the older separate-host design)
-- **Telemetry/data:** inherits OTel from `Kairos.ServiceDefaults`; reaches Postgres through `Kairos.Application` services (never its own data access)
+- **[references/technology-stack.md](references/technology-stack.md)** — the **AI Integration (MCP)** stack slice this skill owns: the MCP protocol, the `ModelContextProtocol` C# SDK (pin the 1.x version), `ModelContextProtocol.AspNetCore` over Streamable HTTP / SSE, the in-process `/mcp` topology, and how it inherits OTel + reaches Postgres through `Kairos.Application`. Read it before scaffolding, or whenever you need an exact package or transport setting.
+- **[references/design-pattern.md](references/design-pattern.md)** — the patterns that shape this slice: **Adapter** (tools → application services), **Command** (each tool), **Facade** (the application services), **Remote Proxy** (`/mcp`). Read it before designing the tool/resource surface.
+- The tool sketches and the "MCP piggybacks on ASP.NET Core for free" rationale are in [docs/research.md](../../../docs/research.md) §3 — consult it for *why*.
+
+If anything here conflicts with the tech-stack slice (or the cross-cutting [index](../../../docs/technology-stack.md)), the slice wins — update this skill to match.
 
 > **Guiding principle:** the MCP server is an adapter, not a brain. Tools validate input and call the *same* application services that Razor Pages and the `/api/*` endpoints use — no business logic, no direct `DbContext` access, is duplicated here.
 

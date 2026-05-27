@@ -1,6 +1,6 @@
 # Kairos Builder Skills
 
-Eight project skills that build Kairos slice by slice, each grounded in [docs/technology-stack.md](../../docs/technology-stack.md) (the source of truth) with rationale in [docs/report-technical-design-research.md](../../docs/report-technical-design-research.md). One skill per section of that doc; all share the same conventions — `net10.0`, Clean Architecture layering, the resource names `kairosdb` / `web`, and the `TaskItem` aggregate (with `ScheduledBlock`).
+Eight project skills that build Kairos slice by slice, each grounded in [docs/technology-stack.md](../../docs/technology-stack.md) (the source of truth) with rationale in [docs/research.md](../../docs/research.md). One skill per section of that doc; all share the same conventions — `net10.0`, Clean Architecture layering, the resource names `kairosdb` / `web`, and the `TaskItem` aggregate (with `ScheduledBlock`).
 
 > **MCP is in-process:** per the tech-stack doc, the MCP server is mapped at `/mcp` inside `Kairos.Web` — there is no separate `Kairos.Mcp` project, container, or `mcp` resource.
 

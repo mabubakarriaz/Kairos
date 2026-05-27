@@ -5,18 +5,17 @@ description: "Build the Kairos DevOps & tooling layer — GitFlow conventions (f
 
 # devops-builder
 
-Build the Kairos DevOps & tooling layer exactly as specified in [docs/technology-stack.md](../../../docs/technology-stack.md). This skill is the procedural companion to that document for automation, code quality, and durability: the tech-stack doc decides *what* the tooling is, this skill decides *how* to enforce style and ship the software consistently. It is the gatekeeper across its siblings — they produce the code and containers; this skill builds, checks, gates, publishes, and backs them up automatically.
+Build the Kairos DevOps & tooling layer the way the **Tooling & DevOps · Backup & Durability** stack slice this skill owns prescribes. This skill is the *procedural companion* to that slice for automation, code quality, and durability: the slice decides **what** the tooling is, this skill decides **how** to enforce style and ship the software consistently. It is the gatekeeper across its siblings — they produce the code and containers; this skill builds, checks, gates, publishes, and backs them up automatically.
 
-**Read [docs/technology-stack.md](../../../docs/technology-stack.md) first** — it is the source of truth (the Tooling & DevOps and Backup & Durability sections). [docs/report-technical-design-research.md](../../../docs/report-technical-design-research.md) holds the vertical-slice build order, the NFR-budget table the CI gates enforce, and the "restore drill in Slice 0" mandate. If anything here conflicts with the tech-stack doc, the doc wins; update this skill to match.
+## References — read when you need them
 
-## Canonical DevOps stack (from the tech-stack doc)
+Keep this file lean. The *what* (the stack) and the underlying *patterns* live in two companion files next to this skill; load them when the task calls for it instead of restating them here:
 
-- **Source control:** **Git / GitHub** — **GitFlow**: one feature branch per vertical slice; tag `v0.N` on merge to `main`
-- **CI/CD:** **GitHub Actions** — build, test, container publish; **gates on the performance budgets** (k6 + Playwright) and bundle size
-- **Code style:** **EditorConfig** — shared, editor-agnostic formatting rules
-- **Quality gates:** **dotnet format + .NET analyzers** — build-time linting & style enforcement (warnings-as-errors)
-- **Feature flags:** **`appsettings.json` booleans** — each build-order slice ships behind its own flag so it's independently demoable
-- **Backup & durability:** nightly **`pg_dump -Fc`**, a **PowerShell retention** script (14 daily / 8 weekly / 12 monthly), and a rehearsed **`pg_restore` restore drill**
+- **[references/technology-stack.md](references/technology-stack.md)** — the **Tooling & DevOps · Backup & Durability** stack slice this skill owns: Git/GitHub + GitFlow, GitHub Actions CI/CD, EditorConfig, dotnet format + .NET analyzers (warnings-as-errors), `appsettings.json` feature flags, and the nightly `pg_dump` backup + retention + restore drill. Read it before scaffolding, or whenever you need an exact tool, action, or retention rule.
+- **[references/design-pattern.md](references/design-pattern.md)** — the patterns that shape this slice: **Chain of Responsibility** (the ordered CI gates), **Memento** (the backups), **Feature Toggle / Strategy** (the per-slice feature flags). Read it before designing the pipeline stages or the flag scheme.
+- The vertical-slice build order, the NFR-budget table the CI gates enforce, and the "restore drill in Slice 0" mandate are in [docs/research.md](../../../docs/research.md) — consult it for *why*.
+
+If anything here conflicts with the tech-stack slice (or the cross-cutting [index](../../../docs/technology-stack.md)), the slice wins — update this skill to match.
 
 > **Guiding principle:** the pipeline is the single, automated source of truth for "is this mergeable?" Everything a reviewer would check — format, analyzers, warnings-as-errors build, the full test suite, **and the performance budgets** — runs in CI on every PR. Green pipeline is the merge contract; nothing ships that the pipeline didn't verify. And **a backup you've never restored isn't a backup** — rehearse the restore in Slice 0.
 

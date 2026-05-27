@@ -5,20 +5,17 @@ description: "Build the Kairos frontend — ASP.NET Core Razor Pages styled with
 
 # frontend-builder
 
-Build the Kairos frontend exactly as specified in [docs/technology-stack.md](../../../docs/technology-stack.md). This skill is the procedural companion to that document for the UI layer: the tech-stack doc decides *what* the frontend stack is, this skill decides *how* to assemble it consistently. The frontend consumes the Razor PageModel handlers and `/api/*` Minimal APIs that `backend-builder` produces.
+Build the Kairos frontend the way the **Frontend** stack slice this skill owns prescribes. This skill is the *procedural companion* to that slice for the UI layer: the slice decides **what** the frontend stack is, this skill decides **how** to assemble it consistently. The frontend consumes the Razor PageModel handlers and `/api/*` Minimal APIs that `backend-builder` produces.
 
-**Read [docs/technology-stack.md](../../../docs/technology-stack.md) first** — it is the source of truth. [docs/report-technical-design-research.md](../../../docs/report-technical-design-research.md) holds the UX research (schedule-view primitives, the keyboard map, the drag recipe) and the frontend NFR budgets. If anything here conflicts with the tech-stack doc, the doc wins; update this skill to match.
+## References — read when you need them
 
-## Canonical frontend stack (from the tech-stack doc)
+Keep this file lean. The *what* (the stack) and the underlying *patterns* live in two companion files next to this skill; load them when the task calls for it instead of restating them here:
 
-- **View layer:** ASP.NET Core **Razor Pages** — server-rendered, the source of truth for markup
-- **Styling:** **Tailwind CSS** — utility-first, compiled via the Tailwind CLI / PostCSS
-- **Server-driven interactivity:** **htmx 2.x** — partial updates without a SPA; `hx-swap-oob` for atomic multi-region updates (source slot + target slot + free-slots panel) and `hx-trigger="every 30s"` for the "now" line
-- **Server-side helpers:** **`Htmx.Net`** (NuGet) — `Request.IsHtmx()` to branch `Partial()` vs `Page()`, plus `HX-Trigger`/`HX-Redirect` response-header helpers
-- **The one JS island:** **SortableJS** — drag-and-drop for the day column; all drag visuals are client-side CSS transforms; fires htmx **only on `onEnd`** (a single POST on drop). This is htmx.org's official drag recipe
-- **Client-only behaviors:** **Alpine.js** — keybindings (`x-on:keydown.window` at the page root), modal/dropdown state, modifier-key drag state in `Alpine.store('drag')`
-- **Asset pipeline:** **Vite** — hash-fingerprinted output to `wwwroot/dist/` (referenced via `vite-manifest.json`), `Cache-Control: immutable` for hashed bundles, HMR in dev
-- **Runtime/host:** .NET 10 ASP.NET Core (`Kairos.Web`), wired through .NET Aspire
+- **[references/technology-stack.md](references/technology-stack.md)** — the **Frontend** stack slice this skill owns: Razor Pages, Tailwind CSS, htmx 2.x (+ `Htmx.Net`), the SortableJS drag island, Alpine.js, and the Vite asset pipeline. Read it before scaffolding, or whenever you need an exact library, package, or pipeline setting.
+- **[references/design-pattern.md](references/design-pattern.md)** — the patterns that shape this slice: **MVP / Page Controller** (the backbone), plus **Composite** (the partial tree), **Observer** (htmx/Alpine events), **Command** (the keymap and the drop). Read it before designing the page/partial structure, the swap targets, or the keybindings.
+- The UX research (schedule-view primitives, the keyboard map, the drag recipe) and the frontend NFR budgets are in [docs/research.md](../../../docs/research.md) — consult it for *why*.
+
+If anything here conflicts with the tech-stack slice (or the cross-cutting [index](../../../docs/technology-stack.md)), the slice wins — update this skill to match.
 
 > **Guiding principle:** Razor Pages stays authoritative on the server. Tailwind styles, htmx fetches server-rendered partials, Alpine handles purely client-side state. The **only** bespoke JS is the SortableJS drag island — a per-pixel server round-trip for drag (Blazor Server / SignalR) is the textbook low-latency-drag anti-pattern and is **excluded**. No heavy SPA framework (Blazor / React are on the Deliberately Excluded list).
 

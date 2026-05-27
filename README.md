@@ -56,7 +56,7 @@ The MCP server runs in-process and is exposed over Streamable HTTP at the `/mcp`
 ## Documentation
 
 - [docs/technology-stack.md](docs/technology-stack.md) — the canonical technology stack and architecture.
-- [docs/report-technical-design-research.md](docs/report-technical-design-research.md) — the rationale, benchmarks, MVP spec, performance budgets, and rejected alternatives behind the stack.
+- [docs/research.md](docs/research.md) — the rationale, benchmarks, MVP spec, performance budgets, and rejected alternatives behind the stack.
 
 ## License
 

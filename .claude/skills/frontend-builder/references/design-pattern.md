@@ -1,13 +1,13 @@
 # frontend-builder — Design Patterns
 
 > Patterns for the UI slice: **Razor Pages** + **Tailwind**, **htmx 2.x** partial updates, **Alpine.js** client state, the single **SortableJS drag island**, and the **Vite** asset pipeline.
-> Companion to [`.claude/skills/frontend-builder/SKILL.md`](../../.claude/skills/frontend-builder/SKILL.md). Canonical stack: [technology-stack.md](../technology-stack.md). Legend & cross-cutting patterns: [README.md](README.md).
+> Companion to [`.claude/skills/frontend-builder/SKILL.md`](../SKILL.md). Canonical stack: [technology-stack.md](technology-stack.md). Legend & cross-cutting patterns: [design-pattern.md](../../../../docs/design-pattern.md).
 
 The frontend's guiding rule is **"server authoritative; one JS island."** In pattern terms that means a passive-view presentation pattern (**MVP / Page Controller**), a tree of server-rendered partials (**Composite**), event-driven updates (**Observer**), and discrete user intents as objects (**Command**) — with no client-side state model competing with the server.
 
 ## Architectural backbone — MVP (Passive View) / Page Controller
 
-**[non-GoF]** (Fowler GUI architectures). This file owns the **View** side of the MVP split introduced in [backend-builder.md](backend-builder.md#architectural-macro--mvp-model-view-presenter-for-the-web-surface):
+**[non-GoF]** (Fowler GUI architectures). This file owns the **View** side of the MVP split introduced in [backend-builder.md](../../backend-builder/references/design-pattern.md#architectural-macro--mvp-model-view-presenter-for-the-web-surface):
 
 - **Page Controller** — each Razor Page is the controller for one URL; its **PageModel** handler is the Presenter.
 - **Passive View** — the `.cshtml` and partials render exactly what the handler hands them and raise requests (via htmx/forms). They contain **no fetch decisions and no business logic**. That passivity is what keeps the server authoritative and the markup the source of truth.
@@ -103,7 +103,7 @@ A normal navigation gets a full page; an htmx request gets just the fragment. Sa
 - **Per-pixel drag round-trips / SignalR.** The textbook low-latency-drag anti-pattern; the drag island fires **once** on drop, and there's no WebSocket.
 - **Smart views.** Partials stay passive (MVP). No fetch decisions or business logic in `.cshtml`.
 - **Hand-editing `wwwroot/dist`.** Assets are built by Vite (hashed, immutable). Edit `ClientApp/src`; let the pipeline produce output.
-- **Bundle bloat.** Initial JS ≤ 80 KB gzipped is a CI gate (see [testing-builder.md](testing-builder.md) / [devops-builder.md](devops-builder.md)) — don't pull in a framework to do what htmx + one island already do.
+- **Bundle bloat.** Initial JS ≤ 80 KB gzipped is a CI gate (see [testing-builder.md](../../testing-builder/references/design-pattern.md) / [devops-builder.md](../../devops-builder/references/design-pattern.md)) — don't pull in a framework to do what htmx + one island already do.
 
 ## How this maps to the build workflow
 

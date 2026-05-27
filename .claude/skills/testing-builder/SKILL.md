@@ -5,19 +5,17 @@ description: "Build the Kairos test suite — xUnit unit tests with FluentAssert
 
 # testing-builder
 
-Build the Kairos test suite exactly as specified in [docs/technology-stack.md](../../../docs/technology-stack.md). This skill is the procedural companion to that document for verification: the tech-stack doc decides *what* the testing tools are, this skill decides *how* to structure and write tests consistently. It is the verifier across its siblings — they produce code; this skill proves it works and stays within the performance budgets.
+Build the Kairos test suite the way the **Testing & Quality** stack slice this skill owns prescribes. This skill is the *procedural companion* to that slice for verification: the slice decides **what** the testing tools are, this skill decides **how** to structure and write tests consistently. It is the verifier across its siblings — they produce code; this skill proves it works and stays within the performance budgets.
 
-**Read [docs/technology-stack.md](../../../docs/technology-stack.md) first** — it is the source of truth. [docs/report-technical-design-research.md](../../../docs/report-technical-design-research.md) holds the consolidated **performance-budget (NFR) table** the Playwright/k6 gates enforce, plus the multirange/exclusion-constraint SQL these tests exercise. If anything here conflicts with the tech-stack doc, the doc wins; update this skill to match.
+## References — read when you need them
 
-## Canonical testing stack (from the tech-stack doc)
+Keep this file lean. The *what* (the stack) and the underlying *patterns* live in two companion files next to this skill; load them when the task calls for it instead of restating them here:
 
-- **Test framework:** **xUnit** — unit & integration
-- **Assertions:** **FluentAssertions** — expressive, readable
-- **Real dependencies:** **Testcontainers for .NET** — ephemeral, containerized PostgreSQL (no in-memory fakes; the only way to test multirange SQL faithfully)
-- **App-model tests:** **Aspire.Hosting.Testing** — start the wired Aspire app graph and test it end to end
-- **E2E + perf traces:** **Playwright** — drives drag→drop→persist; enforces TTI and drop-to-DB budgets via traces in CI
-- **Load testing:** **k6** — enforces htmx-partial-swap and Postgres query p95/p99 budgets as CI gates
-- **Runtime:** .NET 10, `dotnet test`
+- **[references/technology-stack.md](references/technology-stack.md)** — the **Testing & Quality** stack slice this skill owns: xUnit, FluentAssertions, Testcontainers for .NET, Aspire.Hosting.Testing, Playwright (E2E + perf traces), and k6 (load/budget gates). Read it before scaffolding a test project, or whenever you need an exact package or tool.
+- **[references/design-pattern.md](references/design-pattern.md)** — the patterns that shape this slice: **Template Method** (fixture lifecycle), **Builder** (test-data construction), **Shared-Fixture Singleton** (the one Postgres container), and the **Test Double** family (mocks/stubs/fakes — only at the edges). Read it before designing fixtures or test data.
+- The consolidated **performance-budget (NFR) table** the Playwright/k6 gates enforce, plus the multirange/exclusion-constraint SQL these tests exercise, are in [docs/research.md](../../../docs/research.md) — consult it for *why*.
+
+If anything here conflicts with the tech-stack slice (or the cross-cutting [index](../../../docs/technology-stack.md)), the slice wins — update this skill to match.
 
 > **Guiding principle:** test against reality and against the budgets. Postgres-specific behavior (multiranges, the GiST exclusion constraint, `timestamptz`) is verified on real Postgres via Testcontainers; the wired system through the Aspire app model; the UX path through Playwright; and the latency NFRs through k6 + Playwright traces as **CI gates**. In-memory providers and over-mocking hide the bugs that matter.
 

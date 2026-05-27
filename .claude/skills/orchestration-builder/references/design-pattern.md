@@ -1,7 +1,7 @@
 # orchestration-builder — Design Patterns
 
 > Patterns for the integrator slice: the **Aspire AppHost**, **`ServiceDefaults`**, per-service **Dockerfiles**, the **reverse proxy**, and the **dev/prod Compose split**.
-> Companion to [`.claude/skills/orchestration-builder/SKILL.md`](../../.claude/skills/orchestration-builder/SKILL.md). Canonical stack: [technology-stack.md](../technology-stack.md). Legend & cross-cutting patterns: [README.md](README.md).
+> Companion to [`.claude/skills/orchestration-builder/SKILL.md`](../SKILL.md). Canonical stack: [technology-stack.md](technology-stack.md). Legend & cross-cutting patterns: [design-pattern.md](../../../../docs/design-pattern.md).
 
 Orchestration is where the pieces _connect_, so its patterns are about **assembling a graph** and **decoupling the declaration of that graph from the runtime that executes it** — the skill's "one contract, two runtimes" principle stated in pattern terms.
 
@@ -91,7 +91,7 @@ localhost {
 
 ### Facade — `ServiceDefaults`
 
-See the shared note in [README.md](README.md#cross-cutting-patterns-they-recur-across-slices--get-them-right-once). Here it means: every host calls `AddServiceDefaults()` + `MapDefaultEndpoints()` and inherits OTel, `/health` + `/alive`, `AddStandardResilienceHandler`, and service discovery — no host configures these itself.
+See the shared note in [design-pattern.md](../../../../docs/design-pattern.md#cross-cutting-patterns-they-recur-across-slices--get-them-right-once). Here it means: every host calls `AddServiceDefaults()` + `MapDefaultEndpoints()` and inherits OTel, `/health` + `/alive`, `AddStandardResilienceHandler`, and service discovery — no host configures these itself.
 
 ### Singleton — shared network & volumes
 

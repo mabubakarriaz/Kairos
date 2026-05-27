@@ -1,7 +1,7 @@
 # database-builder — Design Patterns
 
 > Patterns for the data layer: **EF Core 10 + Npgsql**, the persistence-ignorant **entities**, the **`KairosDbContext`**, **entity configurations**, the **range/multirange schema**, **migrations**, and the **free-slot SQL**.
-> Companion to [`.claude/skills/database-builder/SKILL.md`](../../.claude/skills/database-builder/SKILL.md). Canonical stack: [technology-stack.md](../technology-stack.md). Legend & cross-cutting patterns: [README.md](README.md).
+> Companion to [`.claude/skills/database-builder/SKILL.md`](../SKILL.md). Canonical stack: [technology-stack.md](technology-stack.md). Legend & cross-cutting patterns: [design-pattern.md](../../../../docs/design-pattern.md).
 
 Persistence patterns are mostly **PoEAA** (Fowler) — EF Core *is* an implementation of several of them — with GoF patterns appearing in the configuration and access machinery. The guiding rule, **"schema is code; free slots are SQL,"** decides which patterns apply and which (e.g. an in-C# query builder) are explicitly rejected.
 
@@ -134,7 +134,7 @@ Surface it via `FromSqlInterpolated` (or a compiled raw query) in `Queries/FreeS
 - **A C# gaps-and-islands re-implementation.** The pre-PG14 fallback is deliberately avoided; gap-finding is SQL.
 - **Generic `IRepository<T>` over `IQueryable`.** Indirection with no abstraction; inject the context or a purposeful repository.
 - **`EnsureCreated()` alongside migrations, or editing an applied migration.** Schema is code; every change is a new, reviewed migration. `ANALYZE` after bulk sync inserts so the GiST planner stays on the index.
-- **EF in-memory provider in tests.** It hides multirange / GiST / `timestamptz` behavior — integration tests use real Postgres via Testcontainers (see [testing-builder.md](testing-builder.md)).
+- **EF in-memory provider in tests.** It hides multirange / GiST / `timestamptz` behavior — integration tests use real Postgres via Testcontainers (see [testing-builder.md](../../testing-builder/references/design-pattern.md)).
 
 ## How this maps to the build workflow
 

@@ -5,22 +5,17 @@ description: "Build Kairos observability — OpenTelemetry instrumentation (trac
 
 # observability-builder
 
-Build the Kairos observability stack exactly as specified in [docs/technology-stack.md](../../../docs/technology-stack.md). This skill is the procedural companion to that document for the telemetry layer: the tech-stack doc decides *what* the observability stack is, this skill decides *how* to assemble it consistently. The other builders produce the services that emit telemetry; this one collects, stores, visualizes, and alerts on it.
+Build the Kairos observability stack the way the **Observability** stack slice this skill owns prescribes. This skill is the *procedural companion* to that slice for the telemetry layer: the slice decides **what** the observability stack is, this skill decides **how** to assemble it consistently. The other builders produce the services that emit telemetry; this one collects, stores, visualizes, and alerts on it.
 
-**Read [docs/technology-stack.md](../../../docs/technology-stack.md) first** — it is the source of truth. [docs/report-technical-design-research.md](../../../docs/report-technical-design-research.md) holds the "minimum viable observability" rationale, the NFR budget table the alerts enforce, and the dev/prod-split reasoning. If anything here conflicts with the tech-stack doc, the doc wins; update this skill to match.
+## References — read when you need them
 
-## Canonical observability stack (from the tech-stack doc)
+Keep this file lean. The *what* (the stack) and the underlying *patterns* live in two companion files next to this skill; load them when the task calls for it instead of restating them here:
 
-- **Instrumentation:** **OpenTelemetry** — traces, metrics, logs; vendor-neutral, built into Aspire service defaults
-- **Pipeline:** **OpenTelemetry Collector** — receives OTLP, processes, fans out to backends
-- **Metrics:** **Prometheus** — incl. Kairos custom metrics
-- **Logs:** **Grafana Loki** — incl. Postgres `auto_explain` output
-- **Traces:** **Grafana Tempo**
-- **Visualization & alerts:** **Grafana** — single pane of glass; alerts on the NFR budgets
-- **Postgres metrics:** **postgres-exporter** sidecar — surfaces `pg_stat_statements` + slow-query data to Prometheus
-- **Runtime spot-checks:** **`dotnet-counters`** — steady-state RSS / GC; the minimum-viable runbook for a one-user app
-- **Client latency:** **web-vitals.js** — INP / interaction latency → an OTel custom metric (drag/input budgets)
-- **Dev:** **.NET Aspire Dashboard** — **dev-only**; guard with `if (builder.ExecutionContext.IsRunMode)`; never in prod compose
+- **[references/technology-stack.md](references/technology-stack.md)** — the **Observability** stack slice this skill owns: OpenTelemetry, the OTel Collector, Prometheus / Loki / Tempo / Grafana, the postgres-exporter sidecar, `dotnet-counters`, web-vitals.js, and the dev-only Aspire Dashboard. Read it before scaffolding, or whenever you need an exact tool, port, or signal mapping.
+- **[references/design-pattern.md](references/design-pattern.md)** — the patterns that shape this slice: **Facade** (`ServiceDefaults` as the one instrumentation front door), **Mediator** (the Collector), **Pipes & Filters** (the receive → process → export pipeline), **Observer** (the instrumentation). Read it before designing the instrumentation seam or the collector pipelines.
+- The "minimum viable observability" rationale, the NFR budget table the alerts enforce, and the dev/prod-split reasoning are in [docs/research.md](../../../docs/research.md) — consult it for *why*.
+
+If anything here conflicts with the tech-stack slice (or the cross-cutting [index](../../../docs/technology-stack.md)), the slice wins — update this skill to match.
 
 > **Guiding principle:** every service exports OTLP and knows nothing about the backends — the Collector owns fan-out, so backends can change without touching app code. And **dev ≠ prod:** dev runs the full Prom/Loki/Tempo/Grafana + Aspire Dashboard; **prod runs a pared-down Collector to a local Prometheus + file logs**, because a full obs stack can out-consume the app itself on one machine.
 

@@ -1,7 +1,7 @@
 # backend-builder — Design Patterns
 
 > Patterns for the backend slice: the **solution layout**, **Domain** + **Application**, the **`Kairos.Web` host** (Razor Pages + Minimal APIs), and the **`GoogleCalendarSyncWorker`**.
-> Companion to [`.claude/skills/backend-builder/SKILL.md`](../../.claude/skills/backend-builder/SKILL.md). Canonical stack: [technology-stack.md](../technology-stack.md). Legend & cross-cutting patterns: [README.md](README.md).
+> Companion to [`.claude/skills/backend-builder/SKILL.md`](../SKILL.md). Canonical stack: [technology-stack.md](technology-stack.md). Legend & cross-cutting patterns: [design-pattern.md](../../../../docs/design-pattern.md).
 
 This is the slice with the most patterns because it owns the project's spine: the layering, the application services every other host calls, and the background sync. Two of the headline patterns here — **Clean Architecture** and **MVP** — are architectural (**[non-GoF]**); the rest are pure GoF.
 
@@ -27,7 +27,7 @@ Kairos uses **Razor Pages**, whose PageModel maps cleanly onto MVP — and argua
 
 Why MVP and not MVC here: with htmx, a handler returns a **server-rendered partial** (`return Request.IsHtmx() ? Partial("Partials/_DayColumn", model) : Page();`). The view stays **passive** — it never decides what to fetch — which is the defining trait of MVP's Passive View variant. The Presenter (PageModel) holds the presentation logic and is unit-testable without a browser.
 
-> The frontend mechanics of the View (Composite partial tree, htmx Observer events, the keymap Command) are detailed in [frontend-builder.md](frontend-builder.md). This file owns the **Presenter** side.
+> The frontend mechanics of the View (Composite partial tree, htmx Observer events, the keymap Command) are detailed in [frontend-builder.md](../../frontend-builder/references/design-pattern.md). This file owns the **Presenter** side.
 
 ## Pattern catalogue
 
@@ -106,7 +106,7 @@ Has token  → events.list(syncToken, pageToken loop) → store nextSyncToken
 
 **Intent (GoF):** Define a family of interchangeable algorithms and make them swappable.
 
-**Where it lives:** `IFreeSlotService` runs the **multirange SQL** (gap-finding is the database's job — see [database-builder.md](database-builder.md)) and then applies a **ranking Strategy** in C# over the handful of returned rows (the research report §1 scoring formula). The full-jitter backoff (1→64 s cap) is a second, smaller Strategy inside the sync worker.
+**Where it lives:** `IFreeSlotService` runs the **multirange SQL** (gap-finding is the database's job — see [database-builder.md](../../database-builder/references/design-pattern.md)) and then applies a **ranking Strategy** in C# over the handful of returned rows (the research report §1 scoring formula). The full-jitter backoff (1→64 s cap) is a second, smaller Strategy inside the sync worker.
 
 **Pitfalls:** **never reimplement gap-finding in C#** — that's the Strategy boundary. C# ranks; SQL finds. Keep the scoring function pure so it's unit-testable without I/O.
 
@@ -138,4 +138,4 @@ Has token  → events.list(syncToken, pageToken loop) → store nextSyncToken
 
 ## How this maps to the build workflow
 
-Build vertical slices: a slice is a **Command** + its validator + a **Facade** method + the Infrastructure **Adapter**, surfaced through an MVP **Presenter** (PageModel) and the equivalent MCP tool. The sync worker adds the **State** machine and its **Strategy** backoff. Each slice ships behind an `appsettings.json` feature flag (see [devops-builder.md](devops-builder.md)).
+Build vertical slices: a slice is a **Command** + its validator + a **Facade** method + the Infrastructure **Adapter**, surfaced through an MVP **Presenter** (PageModel) and the equivalent MCP tool. The sync worker adds the **State** machine and its **Strategy** backoff. Each slice ships behind an `appsettings.json` feature flag (see [devops-builder.md](../../devops-builder/references/design-pattern.md)).

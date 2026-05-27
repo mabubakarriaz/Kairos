@@ -1,7 +1,7 @@
 # devops-builder — Design Patterns
 
 > Patterns for the automation slice: **EditorConfig** + **analyzers**, **`Directory.Build.props`**, **feature flags**, **GitHub Actions CI/CD** with the **Playwright + k6 budget gates**, and the **`pg_dump` backup + restore drill**.
-> Companion to [`.claude/skills/devops-builder/SKILL.md`](../../.claude/skills/devops-builder/SKILL.md). Canonical stack: [technology-stack.md](../technology-stack.md). Legend & cross-cutting patterns: [README.md](README.md).
+> Companion to [`.claude/skills/devops-builder/SKILL.md`](../SKILL.md). Canonical stack: [technology-stack.md](technology-stack.md). Legend & cross-cutting patterns: [design-pattern.md](../../../../docs/design-pattern.md).
 
 The guiding rule — **"the pipeline is the single automated source of truth for 'is this mergeable?'"** — is itself a pattern statement: a **Chain of Responsibility** of gates, fed by a **single source of truth** for build rules, with backups as **Mementos** and slices behind **Feature Toggles**.
 
@@ -50,7 +50,7 @@ The CI workflow is a **Chain of Responsibility** [GoF]: `format → build (warni
 
 **Why it fits:** the dump is a self-contained state capture the app doesn't need to understand to restore — textbook Memento. And the skill's mandate makes the pattern's *caretaker* responsibility explicit: **"a backup you've never restored isn't a backup"** — rehearse the restore in **Slice 0**.
 
-**Pitfalls:** coordinate the volume path (`kairos_pgdata`, bind-mounted under `%USERPROFILE%\KairosData\pg`) and the db name with [database-builder.md](database-builder.md) / [orchestration-builder.md](orchestration-builder.md). An untested Memento is not a backup.
+**Pitfalls:** coordinate the volume path (`kairos_pgdata`, bind-mounted under `%USERPROFILE%\KairosData\pg`) and the db name with [database-builder.md](../../database-builder/references/design-pattern.md) / [orchestration-builder.md](../../orchestration-builder/references/design-pattern.md). An untested Memento is not a backup.
 
 ### Feature Toggle — slices behind flags
 

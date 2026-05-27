@@ -5,30 +5,19 @@ description: "Scaffold and build the Kairos .NET backend — Aspire-orchestrated
 
 # backend-builder
 
-Build the Kairos backend exactly as specified in [docs/technology-stack.md](../../../docs/technology-stack.md). This skill is the procedural companion to that document: the tech-stack doc decides *what* the stack is, this skill decides *how* to assemble it consistently.
+Build the Kairos backend the way the stack slice this skill owns prescribes. This skill is the *procedural companion* to that slice: the slice decides **what** the stack is, this skill decides **how** to assemble it consistently.
 
-**Read [docs/technology-stack.md](../../../docs/technology-stack.md) first** — it is the source of truth. [docs/report-technical-design-research.md](../../../docs/report-technical-design-research.md) holds the rationale, the MVP spec, the NFR budgets, and the vertical-slice build order; consult it for *why*. If anything here conflicts with the tech-stack doc, the doc wins; update this skill to match.
+## References — read when you need them
 
-## Canonical stack (from the tech-stack doc)
+Keep this file lean. The *what* (the stack) and the underlying *patterns* live in two companion files next to this skill; load them when the task calls for it instead of restating them here:
 
-- **Runtime:** .NET 10 (LTS), latest C#. **No Native AOT** for v1 (EF Core + Razor aren't cleanly AOT-compatible; cold-start gains are irrelevant for an always-on local container).
-- **Orchestration:** .NET Aspire (AppHost + ServiceDefaults)
-- **Web/UI:** ASP.NET Core **Razor Pages** (HTML, source of truth) + **Minimal APIs** for `/api/*` and `/mcp`; Kestrel on loopback over `h2c` behind the reverse proxy. Tailwind + htmx 2.x + Alpine + SortableJS via Vite (see `frontend-builder`)
-- **Data:** PostgreSQL 17 via **EF Core 10 + Npgsql**, code-first migrations (see `database-builder`)
-- **Background:** `GoogleCalendarSyncWorker` (`IHostedService`) polling Google Calendar read-only with `syncToken`
-- **External:** Google Calendar API v3 via `Google.Apis.Calendar.v3`; OAuth installed-app flow; tokens encrypted at rest with **ASP.NET Core Data Protection**
-- **Recurrence:** `Ical.Net` 4.x for RRULE expansion of Kairos blocks (expand-on-read, never pre-expand into the DB)
-- **Validation:** FluentValidation (one validator per inbound command/DTO, shared by Web + MCP); **MediatR** optional if a vertical-slice/handler style is adopted
-- **AI:** **MCP server** using `ModelContextProtocol` (pin the 1.x version) over Streamable HTTP / SSE (see `mcp-builder`)
-- **Observability:** OpenTelemetry → OTel Collector → Prometheus / Loki / Tempo → Grafana; Aspire dashboard in dev (see `observability-builder`)
-- **Containers:** Docker per service; `compose.dev.yml` / `compose.prod.yml` split (see `orchestration-builder`)
-- **Testing:** xUnit, Testcontainers, FluentAssertions, Aspire.Hosting.Testing, plus Playwright + k6 budget gates (see `testing-builder`)
+- **[references/technology-stack.md](references/technology-stack.md)** — the **Platform & Runtime · Backend · External Integrations** stack slice this skill owns: .NET 10 / Aspire, ASP.NET Core (Razor Pages + Minimal APIs), EF Core 10 / Npgsql, runtime tuning, the Google Calendar client + OAuth/Data Protection, `Ical.Net`, FluentValidation, optional MediatR. Read it before scaffolding, or whenever you need an exact version, package, or tuning setting.
+- **[references/design-pattern.md](references/design-pattern.md)** — the patterns that shape this slice: **Clean Architecture** + **MVP** (the backbone), plus **Facade** (application services), **State** (the `syncToken` machine), **Strategy** (free-slot ranking), **Template Method**, **Adapter**, **Decorator**. Read it before designing the layering, the application services, or the sync worker.
+- Rationale, the MVP spec, the NFR budgets, and the vertical-slice build order are in [docs/research.md](../../../docs/research.md) — consult it for *why*.
 
-### Runtime tuning (set these explicitly)
-- **Keep ReadyToRun + Tiered Compilation** (on by default in the .NET 10 SDK) — ~80% of the cold-start win at zero cost.
-- **`<ServerGarbageCollection>true</ServerGarbageCollection>`** in the host csproj — containers misdetect core count; Workstation GC is wrong for a server process.
-- **System.Text.Json source generators** — `[JsonSerializable(typeof(TaskDto))]` etc. for the small set of API/MCP DTOs; trims first-call latency.
-- **Do not set `PublishAot`.** It's on the Deliberately Excluded list.
+If anything here conflicts with the tech-stack slice (or the cross-cutting [index](../../../docs/technology-stack.md)), the slice wins — update this skill to match.
+
+> **Runtime tuning (set these explicitly):** `<ServerGarbageCollection>true</ServerGarbageCollection>` in the host csproj; keep ReadyToRun + Tiered Compilation (on by default in the .NET 10 SDK); System.Text.Json source generators for the API/MCP DTOs; **never set `PublishAot`** (Deliberately Excluded). Full rationale + the rest of the stack: [references/technology-stack.md](references/technology-stack.md).
 
 ## Target solution layout
 

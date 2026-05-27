@@ -1,7 +1,7 @@
 # observability-builder — Design Patterns
 
 > Patterns for the telemetry slice: **OpenTelemetry** instrumentation centralized in **`ServiceDefaults`**, the **OTel Collector**, **Prometheus / Loki / Tempo**, **Grafana**, the **postgres-exporter**, and the **dev/prod split**.
-> Companion to [`.claude/skills/observability-builder/SKILL.md`](../../.claude/skills/observability-builder/SKILL.md). Canonical stack: [technology-stack.md](../technology-stack.md). Legend & cross-cutting patterns: [README.md](README.md).
+> Companion to [`.claude/skills/observability-builder/SKILL.md`](../SKILL.md). Canonical stack: [technology-stack.md](technology-stack.md). Legend & cross-cutting patterns: [design-pattern.md](../../../../docs/design-pattern.md).
 
 The whole slice rests on one idea: **apps emit OTLP and know nothing about the backends; the Collector owns fan-out.** That's a **Mediator** decoupling producers from consumers, fed by **Observer**-style instrumentation, configured through a single **Facade**, and shaped by a **Pipes & Filters** pipeline.
 
@@ -91,7 +91,7 @@ The backend/frontend/mcp slices start/stop these at the right call sites; Promet
 
 ### Strategy — dev vs prod posture
 
-**Where it lives:** `config.dev.yaml` (full fan-out: Prom + Loki + Tempo + Grafana + Aspire dashboard) vs `config.prod.yaml` (local Prometheus + file logs only). Same Collector, two export Strategies, selected by which compose file runs. The Aspire dashboard is `IsRunMode`-guarded in the AppHost (see [orchestration-builder.md](orchestration-builder.md#abstract-factory--dev-vs-prod-resource-families)).
+**Where it lives:** `config.dev.yaml` (full fan-out: Prom + Loki + Tempo + Grafana + Aspire dashboard) vs `config.prod.yaml` (local Prometheus + file logs only). Same Collector, two export Strategies, selected by which compose file runs. The Aspire dashboard is `IsRunMode`-guarded in the AppHost (see [orchestration-builder.md](../../orchestration-builder/references/design-pattern.md#abstract-factory--dev-vs-prod-resource-families)).
 
 ### Singleton — the `ActivitySource` & `Meter`
 

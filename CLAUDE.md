@@ -9,7 +9,7 @@ Kairos is a single-user todo app whose distinguishing feature is a time-blocked,
 ## Source of truth
 
 - **[docs/technology-stack.md](docs/technology-stack.md) is canonical.** It defines the entire stack, the architecture diagram, and every cross-cutting decision (incl. the "Deliberately Excluded" list). If anything — a skill, this file, your own instinct — conflicts with it, the tech-stack doc wins; update the conflicting thing to match.
-- **[docs/report-technical-design-research.md](docs/report-technical-design-research.md)** holds the rationale, benchmarks, the MVP spec, the NFR performance-budget table, and the rejected alternatives behind each choice. Read it for *why*, not *what*.
+- **[docs/research.md](docs/research.md)** holds the rationale, benchmarks, the MVP spec, the NFR performance-budget table, and the rejected alternatives behind each choice. Read it for *why*, not *what*.
 
 ## How work gets done: the builder skills
 

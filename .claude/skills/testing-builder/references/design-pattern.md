@@ -1,7 +1,7 @@
 # testing-builder — Design Patterns
 
 > Patterns for the verification slice: **xUnit** + **FluentAssertions**, **Testcontainers** Postgres, **Aspire.Hosting.Testing**, **Playwright** E2E + perf traces, and **k6** budget gates.
-> Companion to [`.claude/skills/testing-builder/SKILL.md`](../../.claude/skills/testing-builder/SKILL.md). Canonical stack: [technology-stack.md](../technology-stack.md). Legend & cross-cutting patterns: [README.md](README.md).
+> Companion to [`.claude/skills/testing-builder/SKILL.md`](../SKILL.md). Canonical stack: [technology-stack.md](technology-stack.md). Legend & cross-cutting patterns: [design-pattern.md](../../../../docs/design-pattern.md).
 
 Test patterns are their own canon (Meszaros, _xUnit Test Patterns_, **[non-GoF]**), but most map onto GoF. The guiding rule — **"test against reality and against the budgets"** — dictates which patterns are mandatory (real-dependency fixtures) and which are forbidden (in-memory fakes for Postgres semantics).
 
@@ -97,7 +97,7 @@ var http = app.CreateHttpClient("web");                       // Factory Method
 
 - **EF in-memory provider.** It fakes away the very Postgres behavior under test — Testcontainers is mandatory.
 - **Mocking the database or the SQL.** Mock only at the edges; gap-finding and the exclusion constraint must run on real PG.
-- **Treating budgets as advisory.** Playwright/k6 are merge gates (see [devops-builder.md](devops-builder.md)).
+- **Treating budgets as advisory.** Playwright/k6 are merge gates (see [devops-builder.md](../../devops-builder/references/design-pattern.md)).
 - **Shared mutable state across tests.** Share the container, isolate the data; inject the clock.
 - **A fat app-model tier.** Keep it thin; it's the slowest and most fragile.
 

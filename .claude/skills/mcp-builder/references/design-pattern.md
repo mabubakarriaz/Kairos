@@ -1,7 +1,7 @@
 # mcp-builder — Design Patterns
 
 > Patterns for the AI-integration slice: the **MCP server mapped in-process at `/mcp`** inside `Kairos.Web`, its **tools** and **resources**, and the **Streamable HTTP / SSE transport**.
-> Companion to [`.claude/skills/mcp-builder/SKILL.md`](../../.claude/skills/mcp-builder/SKILL.md). Canonical stack: [technology-stack.md](../technology-stack.md). Legend & cross-cutting patterns: [README.md](README.md).
+> Companion to [`.claude/skills/mcp-builder/SKILL.md`](../SKILL.md). Canonical stack: [technology-stack.md](technology-stack.md). Legend & cross-cutting patterns: [design-pattern.md](../../../../docs/design-pattern.md).
 
 The skill's one-line rule — **"the MCP server is an adapter, not a brain"** — *is* the design pattern. Every pattern here serves that rule: expose the existing application services to AI clients over a protocol, adding nothing but translation, validation, and a clear contract.
 
@@ -54,7 +54,7 @@ public class TaskTools
 
 ### Facade — shared application services
 
-See the cross-cutting note in [README.md](README.md#cross-cutting-patterns-they-recur-across-slices--get-them-right-once) and [backend-builder.md](backend-builder.md#facade--application-services-the-one-front-door). For MCP specifically: `list_free_slots` calls `IFreeSlotService`, which runs the **multirange SQL** — the tool never re-implements gap-finding.
+See the cross-cutting note in [design-pattern.md](../../../../docs/design-pattern.md#cross-cutting-patterns-they-recur-across-slices--get-them-right-once) and [backend-builder.md](../../backend-builder/references/design-pattern.md#facade--application-services-the-one-front-door). For MCP specifically: `list_free_slots` calls `IFreeSlotService`, which runs the **multirange SQL** — the tool never re-implements gap-finding.
 
 ```csharp
 [McpServerTool, Description("Return free slots ≥ minMinutes between t1 and t2, best-ranked first.")]
@@ -75,7 +75,7 @@ public async Task<IReadOnlyList<FreeSlot>> ListFreeSlots(
 
 **Why it fits:** it's the same code path as the web UI (same process, same DI container, same services), surfaced through a remote interface — Proxy, not a second service. This is the "MCP piggybacks on ASP.NET Core for free" rationale, and why there is **no separate `Kairos.Mcp` project, container, or `mcp` Aspire resource**.
 
-**Pitfalls:** **pin the `ModelContextProtocol` version** in the csproj — the spec and SDK are still moving (Dependabot reviews its bumps manually; see [devops-builder.md](devops-builder.md)).
+**Pitfalls:** **pin the `ModelContextProtocol` version** in the csproj — the spec and SDK are still moving (Dependabot reviews its bumps manually; see [devops-builder.md](../../devops-builder/references/design-pattern.md)).
 
 ### Chain of Responsibility — validate → structured error → delegate
 
@@ -104,4 +104,4 @@ A small but firm split: **Tools** are Commands that change state (create/delete/
 
 ## How this maps to the build workflow
 
-Map the bare server first (confirm a client can list tools) — that's the Remote Proxy + Registry working. Then add tools one at a time: each is an Adapter/Command following the Template Method skeleton, validated via the Chain, delegating to a shared Facade. Verify end to end against real Postgres (a created task is returned by `list_tasks`; `list_free_slots` returns real gaps) — see [testing-builder.md](testing-builder.md).
+Map the bare server first (confirm a client can list tools) — that's the Remote Proxy + Registry working. Then add tools one at a time: each is an Adapter/Command following the Template Method skeleton, validated via the Chain, delegating to a shared Facade. Verify end to end against real Postgres (a created task is returned by `list_tasks`; `list_free_slots` returns real gaps) — see [testing-builder.md](../../testing-builder/references/design-pattern.md).

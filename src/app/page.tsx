@@ -18,16 +18,21 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
 
   let blocks: ScheduledBlock[] = [];
   let freeSlots: FreeSlot[] = [];
-  let loadError: string | null = null;
 
-  try {
-    [blocks, freeSlots] = await Promise.all([
-      getBlocksInRange(startUtc, endUtc),
-      getFreeSlots(startUtc, endUtc, 5),
-    ]);
-  } catch (e) {
-    loadError = e instanceof Error ? e.message : "Failed to load the schedule.";
-  }
+  // Fetch independently so a failure in one panel doesn't blank the whole page,
+  // and so the error notice can report exactly which call failed.
+  const [blocksRes, freeRes] = await Promise.allSettled([
+    getBlocksInRange(startUtc, endUtc),
+    getFreeSlots(startUtc, endUtc, 5),
+  ]);
+  if (blocksRes.status === "fulfilled") blocks = blocksRes.value;
+  if (freeRes.status === "fulfilled") freeSlots = freeRes.value;
+
+  const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+  const errors: string[] = [];
+  if (blocksRes.status === "rejected") errors.push(`schedule — ${msg(blocksRes.reason)}`);
+  if (freeRes.status === "rejected") errors.push(`free slots — ${msg(freeRes.reason)}`);
+  const loadError = errors.length ? errors.join(" · ") : null;
 
   return (
     <div className="space-y-6">

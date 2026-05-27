@@ -14,10 +14,15 @@ let client: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient {
   if (client) return client;
 
-  // Tolerate a pasted trailing slash / stray whitespace — a trailing slash makes
-  // supabase-js build "https://…supabase.co//rest/v1/…", which the gateway rejects
-  // with "Invalid path specified in request URL".
-  const url = process.env.SUPABASE_URL?.trim().replace(/\/+$/, "");
+  // supabase-js wants the bare project URL (it appends "/rest/v1" itself). Tolerate
+  // the common paste mistakes — stray whitespace, a trailing slash, or the full REST
+  // endpoint ("…supabase.co/rest/v1/") — all of which otherwise produce the gateway
+  // error "Invalid path specified in request URL".
+  const url = process.env.SUPABASE_URL
+    ?.trim()
+    .replace(/\/+$/, "")
+    .replace(/\/rest\/v1$/i, "")
+    .replace(/\/+$/, "");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) {
     throw new Error(

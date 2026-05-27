@@ -22,7 +22,9 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pin an exact version: `latest` resolves via the GitHub API and gets
+          # rate-limited on frequent runs ("Failed to resolve latest ... rate limit").
+          version: 2.101.0
 
       - name: Push migrations to Supabase
         env:

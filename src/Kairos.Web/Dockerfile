@@ -3,7 +3,7 @@
 # Build context is the repo root (see compose: build.context = .).
 
 # ── Stage 1: build front-end assets with Vite (frontend-builder owns ClientApp) ──
-FROM node:22-alpine AS assets
+FROM node:26-alpine AS assets
 WORKDIR /app/ClientApp
 COPY src/Kairos.Web/ClientApp/package*.json ./
 RUN npm ci

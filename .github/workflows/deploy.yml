@@ -7,6 +7,15 @@ name: Deploy
 on:
   push:
     branches: [main]
+    # Docs/memory-only changes don't need a redeploy. Use the Run workflow button
+    # (workflow_dispatch) to force a deploy regardless.
+    paths-ignore:
+      - "**.md"
+      - ".claude/**"
+      - "docs/**"
+      - "LICENSE"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/FUNDING.yml"
   workflow_dispatch:
 
 concurrency:

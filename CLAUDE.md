@@ -101,3 +101,13 @@ so it never hits the DB at build time and needs no secrets.
 - **`searchParams` is async** in Next 15 — `await` it in `page.tsx`.
 - **Don't gate the build on ESLint** — `next.config.ts` sets `eslint.ignoreDuringBuilds`;
   lint runs as its own CI step. TypeScript errors still fail the build (keep types sound).
+
+## Project memory
+
+Durable project context (decisions, live-deployment facts, UI design language) lives
+in `.claude/memory/` and is committed to the repo. These are imported below so they
+load every session — keep them short and update them when you learn something durable.
+
+@.claude/memory/deployment-live.md
+@.claude/memory/stack-migration-2026-05-27.md
+@.claude/memory/ui-redesign-direction.md

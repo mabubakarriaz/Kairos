@@ -11,7 +11,7 @@
     "alpinejs": "^3.14.1",
     "htmx.org": "^2.0.3",
     "sortablejs": "^1.15.3",
-    "web-vitals": "^4.2.3"
+    "web-vitals": "^5.2.0"
   },
   "devDependencies": {
     "@types/alpinejs": "^3.13.10",

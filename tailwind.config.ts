@@ -33,8 +33,10 @@ export default {
         mono: ["var(--font-mono)", "ui-monospace", "JetBrains Mono", "Consolas", "monospace"],
       },
       transitionTimingFunction: {
-        // Ease-out-quart. Mechanical, no bounce, no elastic.
-        snap: "cubic-bezier(0.22, 1, 0.36, 1)",
+        // Ease-out-quart. Mechanical, no bounce, no elastic. Curve lives in
+        // `--ease-snap` (globals.css) so plain CSS `transition:` declarations
+        // and the Tailwind utility share one source of truth.
+        snap: "var(--ease-snap)",
       },
     },
   },

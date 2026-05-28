@@ -46,6 +46,20 @@
 
     /* Shadow base — warm black */
     --shadow: 24 18 12;
+
+    /* ── System tokens (theme-invariant) ─────────────────────────────────────
+       Named once here, referenced everywhere. The shadow vocabulary names
+       match DESIGN.md §4: Composer Lift, Drag Lift. Editing Ring stays
+       inline as a single declaration (one shape, one use). */
+    --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+    --font-mono-stack: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    --shadow-lift:
+      0 0 0 1px rgb(var(--accent) / 0.55),
+      0 10px 28px -8px rgb(var(--shadow) / 0.25);
+    --shadow-drag:
+      0 1px 0 rgb(var(--shadow) / 0.05),
+      0 12px 24px -8px rgb(var(--shadow) / 0.30),
+      0 0 0 1px rgb(var(--accent) / 0.30) inset;
   }
 
   .dark {
@@ -99,7 +113,7 @@
   time,
   .block-time,
   .hour-label {
-    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-family: var(--font-mono-stack);
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum", "ss01";
   }
@@ -207,10 +221,7 @@
   .block-dragging {
     @apply cursor-grabbing;
     z-index: 30;
-    box-shadow:
-      0 1px 0 rgb(var(--shadow) / 0.05),
-      0 12px 24px -8px rgb(var(--shadow) / 0.30),
-      0 0 0 1px rgb(var(--accent) / 0.30) inset;
+    box-shadow: var(--shadow-drag);
     background-color: rgb(var(--block-strong));
   }
   .block-pending {
@@ -276,7 +287,7 @@
     height: 2px;
     border-radius: 9999px;
     background-color: rgb(var(--accent-strong) / 0);
-    transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1), width 150ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: background-color 150ms var(--ease-snap), width 150ms var(--ease-snap);
   }
   .block:hover .block-resize::after,
   .block:focus-within .block-resize::after {
@@ -289,10 +300,7 @@
   }
   .block-resizing {
     z-index: 30;
-    box-shadow:
-      0 1px 0 rgb(var(--shadow) / 0.05),
-      0 12px 24px -8px rgb(var(--shadow) / 0.30),
-      0 0 0 1px rgb(var(--accent) / 0.30) inset;
+    box-shadow: var(--shadow-drag);
     background-color: rgb(var(--block-strong));
   }
   .block-resizing .block-resize::after {
@@ -332,7 +340,7 @@
     pointer-events: none;
     border-top: 1px dashed rgb(var(--free) / 0.42);
     opacity: 0.7;
-    transition: opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 220ms var(--ease-snap);
   }
   .freeslot-label {
     @apply absolute left-0 top-1 text-[10px] leading-none;
@@ -381,7 +389,7 @@
     @apply pointer-events-none absolute right-2 top-1.5 text-[9px] font-semibold uppercase leading-none;
     color: rgb(var(--now));
     letter-spacing: 0.18em;
-    transition: opacity 150ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 150ms var(--ease-snap);
   }
   /* Hover or focus brings the delete X into the same corner — fade the glyph
      so the two affordances don't stack. Editing replaces the corner entirely. */
@@ -404,7 +412,7 @@
     height: 1px;
     z-index: 18;
     background-color: rgb(var(--border-strong));
-    transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: background-color 200ms var(--ease-snap);
   }
   .checkpoint:hover,
   .checkpoint:focus-within {
@@ -419,7 +427,7 @@
     left: 36px;
     width: 10px;
     background-color: rgb(var(--text-faint));
-    transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: background-color 200ms var(--ease-snap);
   }
   .checkpoint:hover .checkpoint-tick,
   .checkpoint:focus-within .checkpoint-tick {
@@ -434,7 +442,7 @@
     padding: 0 6px;
     background-color: rgb(var(--surface));
     color: rgb(var(--text-faint));
-    transition: color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: color 200ms var(--ease-snap);
     cursor: text;
     pointer-events: auto;
   }
@@ -516,7 +524,7 @@
   .checkpoint-editor-time {
     @apply w-[72px] bg-transparent text-right text-[11px] leading-none outline-none;
     color: rgb(var(--text-muted));
-    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-family: var(--font-mono-stack);
     font-variant-numeric: tabular-nums;
   }
   .checkpoint-editor-time:focus {
@@ -558,9 +566,7 @@
     @apply transition-[box-shadow] duration-200 ease-snap;
     background-color: rgb(var(--surface));
     color: rgb(var(--text));
-    box-shadow:
-      0 0 0 1px rgb(var(--accent) / 0.55),
-      0 10px 28px -8px rgb(var(--shadow) / 0.25);
+    box-shadow: var(--shadow-lift);
     z-index: 40;
   }
   .composer-row {
@@ -578,7 +584,7 @@
   .composer-time-input {
     @apply w-[72px] bg-transparent text-[11px] outline-none;
     color: rgb(var(--text-muted));
-    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-family: var(--font-mono-stack);
     font-variant-numeric: tabular-nums;
   }
   .composer-time-input:focus {
@@ -587,7 +593,7 @@
   .composer-meta {
     @apply mt-0.5 flex items-center gap-1.5 text-[10px] leading-tight;
     color: rgb(var(--text-faint));
-    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-family: var(--font-mono-stack);
     font-variant-numeric: tabular-nums;
   }
   .composer-error {
@@ -612,7 +618,7 @@
     border-color: rgb(var(--border-strong));
     background-color: rgb(var(--surface));
     color: rgb(var(--text-muted));
-    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-family: var(--font-mono-stack);
   }
 
   /* ── Thin themed scrollbar for the schedule scroll area. */
@@ -832,7 +838,7 @@
   .composer-labels {
     @apply min-w-0 flex-1 bg-transparent text-[11px] leading-tight outline-none;
     color: rgb(var(--text));
-    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-family: var(--font-mono-stack);
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.01em;
   }
@@ -922,7 +928,7 @@
   .filter-pill-mark {
     @apply inline-block h-2 w-2 rounded-full;
     background-color: rgb(var(--text-faint) / 0.6);
-    transition: background-color 150ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: background-color 150ms var(--ease-snap);
   }
   .filter-pill[data-active] .filter-pill-mark {
     background-color: rgb(var(--accent));
@@ -1021,12 +1027,10 @@
     @apply relative flex items-center rounded-md px-3 py-2.5;
     background-color: rgb(var(--surface));
     box-shadow: 0 0 0 1px rgb(var(--border));
-    transition: box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: box-shadow 200ms var(--ease-snap), opacity 200ms var(--ease-snap);
   }
   .login-field:focus-within {
-    box-shadow:
-      0 0 0 1px rgb(var(--accent) / 0.55),
-      0 10px 28px -8px rgb(var(--shadow) / 0.25);
+    box-shadow: var(--shadow-lift);
   }
   .login-field[data-locked] {
     opacity: 0.62;
@@ -1048,7 +1052,7 @@
   .login-enter {
     @apply ml-2 inline-flex h-5 items-center text-[12px] leading-none;
     color: rgb(var(--text-faint));
-    transition: color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition: color 200ms var(--ease-snap);
   }
   .login-field:focus-within .login-enter {
     color: rgb(var(--accent-strong));

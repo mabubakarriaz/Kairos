@@ -80,3 +80,28 @@ export async function deleteBlock(blockId: string): Promise<Result> {
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+/** Rename the task behind a Kairos block. Gcal blocks are read-only. */
+export async function renameBlock(blockId: string, title: string): Promise<Result> {
+  const supabase = getSupabase();
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from("scheduled_blocks")
+    .select("task_id, source")
+    .eq("id", blockId)
+    .maybeSingle();
+
+  if (fetchErr) return { ok: false, error: fetchErr.message };
+  if (!existing) return { ok: false, error: "That block no longer exists." };
+  if (existing.source !== "kairos" || !existing.task_id) {
+    return { ok: false, error: "That block is read-only." };
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ title })
+    .eq("id", existing.task_id);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}

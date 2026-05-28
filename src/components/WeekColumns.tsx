@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { deleteBlockAction, rescheduleAction } from "@/app/actions";
+import { deleteBlockAction, renameBlockAction, rescheduleAction } from "@/app/actions";
 import {
   DAY_MINUTES,
   PX_PER_MIN,
@@ -35,6 +35,7 @@ interface Props {
 
 type DragState = {
   id: string;
+  mode: "move" | "resize";
   srcDateIdx: number;
   dstDateIdx: number;
   topMin: number;
@@ -54,6 +55,7 @@ export function WeekColumns({ days }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [nowMin, setNowMin] = useState<number | null>(null);
   const [composer, setComposer] = useState<ComposerState>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -187,6 +189,7 @@ export function WeekColumns({ days }: Props) {
 
   function startDrag(e: React.PointerEvent, block: ScheduledBlock, srcColIdx: number) {
     if (block.source !== "kairos" || pendingId || isPastByCol[srcColIdx]) return;
+    if (editingId === block.id) return;
     e.preventDefault();
     setComposer(null);
 
@@ -202,6 +205,7 @@ export function WeekColumns({ days }: Props) {
     setError(null);
     setDrag({
       id: block.id,
+      mode: "move",
       srcDateIdx: srcColIdx,
       dstDateIdx: srcColIdx,
       topMin: origTop,
@@ -230,6 +234,7 @@ export function WeekColumns({ days }: Props) {
 
       setDrag({
         id: block.id,
+        mode: "move",
         srcDateIdx: srcColIdx,
         dstDateIdx: dst,
         topMin: liveTop,
@@ -241,7 +246,12 @@ export function WeekColumns({ days }: Props) {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
 
-      if (!moved || (liveDst === srcColIdx && liveTop === origTop)) {
+      if (!moved) {
+        setDrag(null);
+        setEditingId(block.id);
+        return;
+      }
+      if (liveDst === srcColIdx && liveTop === origTop) {
         setDrag(null);
         return;
       }
@@ -264,6 +274,106 @@ export function WeekColumns({ days }: Props) {
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+  }
+
+  const maxDurAt = useCallback(
+    (colIdx: number, topMin: number, excludeId: string): number => {
+      let nextStart = DAY_MINUTES;
+      for (const b of blocksByCol[colIdx]) {
+        if (b.id === excludeId) continue;
+        const s = minutesFromDayStart(b.startUtc, days[colIdx].dayStartUtc);
+        if (s > topMin) {
+          nextStart = s;
+          break;
+        }
+      }
+      return Math.max(15, nextStart - topMin);
+    },
+    [blocksByCol, days],
+  );
+
+  function startResize(e: React.PointerEvent, block: ScheduledBlock, colIdx: number) {
+    if (block.source !== "kairos" || pendingId || isPastByCol[colIdx]) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setComposer(null);
+    setEditingId(null);
+
+    const dayStartUtc = days[colIdx].dayStartUtc;
+    const topMin = minutesFromDayStart(block.startUtc, dayStartUtc);
+    const origDur = durationMin(block);
+    const startY = e.clientY;
+    const cap = maxDurAt(colIdx, topMin, block.id);
+    let liveDur = origDur;
+    let moved = false;
+
+    setError(null);
+    setDrag({
+      id: block.id,
+      mode: "resize",
+      srcDateIdx: colIdx,
+      dstDateIdx: colIdx,
+      topMin,
+      durMin: origDur,
+    });
+
+    const onMove = (ev: PointerEvent) => {
+      if (Math.abs(ev.clientY - startY) > 3) moved = true;
+      const deltaMin = (ev.clientY - startY) / PX_PER_MIN;
+      liveDur = Math.max(15, Math.min(snapMinutes(origDur + deltaMin), cap));
+      setDrag({
+        id: block.id,
+        mode: "resize",
+        srcDateIdx: colIdx,
+        dstDateIdx: colIdx,
+        topMin,
+        durMin: liveDur,
+      });
+    };
+
+    const onUp = async () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+
+      if (!moved || liveDur === origDur) {
+        setDrag(null);
+        return;
+      }
+
+      const dayStartMs = new Date(dayStartUtc).getTime();
+      const newStart = new Date(dayStartMs + topMin * 60_000).toISOString();
+      const newEnd = new Date(dayStartMs + (topMin + liveDur) * 60_000).toISOString();
+
+      setPendingId(block.id);
+      const res = await rescheduleAction(block.id, newStart, newEnd);
+      setPendingId(null);
+      setDrag(null);
+
+      if (!res.ok) setError(res.error ?? "Could not resize.");
+      else {
+        setError(null);
+        router.refresh();
+      }
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  async function commitRename(blockId: string, nextTitle: string, originalTitle: string) {
+    const trimmed = nextTitle.trim();
+    setEditingId(null);
+    if (!trimmed || trimmed === originalTitle.trim()) return;
+
+    setPendingId(blockId);
+    const res = await renameBlockAction(blockId, trimmed);
+    setPendingId(null);
+
+    if (!res.ok) setError(res.error ?? "Could not rename.");
+    else {
+      setError(null);
+      router.refresh();
+    }
   }
 
   async function remove(e: React.MouseEvent, id: string) {
@@ -377,12 +487,14 @@ export function WeekColumns({ days }: Props) {
                         return null;
                       }
                       const isDragging = drag?.id === b.id && drag.dstDateIdx === i;
+                      const isResizing = isDragging && drag!.mode === "resize";
                       const top = isDragging
                         ? drag!.topMin
                         : minutesFromDayStart(b.startUtc, dayStartUtc);
                       const dur = isDragging ? drag!.durMin : durationMin(b);
                       const height = Math.max(dur * PX_PER_MIN, 22);
                       const movable = b.source === "kairos" && !past;
+                      const isEditing = editingId === b.id;
 
                       const startIso = new Date(dayStartMs + top * 60_000).toISOString();
                       const endIso = new Date(dayStartMs + (top + dur) * 60_000).toISOString();
@@ -390,7 +502,9 @@ export function WeekColumns({ days }: Props) {
                       const cls = [
                         "block",
                         movable ? "block-kairos" : "",
-                        isDragging ? "block-dragging" : "",
+                        isDragging && !isResizing ? "block-dragging" : "",
+                        isResizing ? "block-resizing" : "",
+                        isEditing ? "block-editing" : "",
                         pendingId === b.id ? "block-pending" : "",
                         past ? "opacity-75" : "",
                       ]
@@ -404,7 +518,7 @@ export function WeekColumns({ days }: Props) {
                           style={{ top, height }}
                           onPointerDown={(e) => startDrag(e, b, i)}
                         >
-                          {movable && (
+                          {movable && !isEditing && (
                             <button
                               type="button"
                               className="block-del"
@@ -426,12 +540,29 @@ export function WeekColumns({ days }: Props) {
                               </svg>
                             </button>
                           )}
-                          <div className="block-title">{b.title}</div>
+                          {isEditing ? (
+                            <BlockTitleInput
+                              initial={b.title}
+                              onCommit={(next) => commitRename(b.id, next, b.title)}
+                              onCancel={() => setEditingId(null)}
+                            />
+                          ) : (
+                            <div className="block-title">{b.title}</div>
+                          )}
                           <div className="block-time">
                             {isDragging
                               ? fmtRange(startIso, endIso)
                               : fmtRange(b.startUtc, b.endUtc)}
                           </div>
+                          {movable && !isEditing && (
+                            <div
+                              className="block-resize"
+                              onPointerDown={(e) => startResize(e, b, i)}
+                              role="separator"
+                              aria-orientation="horizontal"
+                              aria-label="Resize block duration"
+                            />
+                          )}
                         </div>
                       );
                     })}
@@ -494,6 +625,49 @@ export function WeekColumns({ days }: Props) {
         <StatusRight totalBlocks={totalBlocks} hasComposer={composer !== null} />
       </div>
     </div>
+  );
+}
+
+function BlockTitleInput({
+  initial,
+  onCommit,
+  onCancel,
+}: {
+  initial: string;
+  onCommit: (next: string) => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [value, setValue] = useState(initial);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, []);
+
+  return (
+    <input
+      ref={ref}
+      className="block-title-input"
+      value={value}
+      maxLength={140}
+      spellCheck={false}
+      onChange={(e) => setValue(e.target.value)}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onCommit(value);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+      onBlur={() => onCommit(value)}
+      aria-label="Block title"
+    />
   );
 }
 

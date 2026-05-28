@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createTaskWithBlock } from "@/server/tasks";
-import { deleteBlock, rescheduleBlock } from "@/server/schedule";
+import { deleteBlock, renameBlock, rescheduleBlock } from "@/server/schedule";
 import { isoAt } from "@/lib/time";
 
 export interface ActionResult {
@@ -59,6 +59,20 @@ export async function deleteBlockAction(blockId: string): Promise<ActionResult> 
   if (!blockId) return { ok: false, error: "Missing block id." };
 
   const result = await deleteBlock(blockId);
+  if (!result.ok) return { ok: false, error: result.error };
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Rename the task attached to a Kairos block. */
+export async function renameBlockAction(blockId: string, title: string): Promise<ActionResult> {
+  if (!blockId) return { ok: false, error: "Missing block id." };
+  const trimmed = title.trim();
+  if (!trimmed) return { ok: false, error: "Title is required." };
+  if (trimmed.length > 140) return { ok: false, error: "Title is too long." };
+
+  const result = await renameBlock(blockId, trimmed);
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath("/");

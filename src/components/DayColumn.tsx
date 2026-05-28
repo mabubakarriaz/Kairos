@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { deleteBlockAction, rescheduleAction } from "@/app/actions";
+import { deleteBlockAction, renameBlockAction, rescheduleAction } from "@/app/actions";
 import {
   DAY_MINUTES,
   PX_PER_MIN,
@@ -28,7 +28,12 @@ interface Props {
   isPast: boolean;
 }
 
-type DragState = { id: string; topMin: number; durMin: number } | null;
+type DragState = {
+  id: string;
+  mode: "move" | "resize";
+  topMin: number;
+  durMin: number;
+} | null;
 type ComposerState = { topMin: number; durMin: number } | null;
 
 export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPast }: Props) {
@@ -40,6 +45,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
   const [error, setError] = useState<string | null>(null);
   const [nowMin, setNowMin] = useState<number | null>(null);
   const [composer, setComposer] = useState<ComposerState>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -158,6 +164,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
 
   function startDrag(e: React.PointerEvent, block: ScheduledBlock) {
     if (block.source !== "kairos" || pendingId || isPast) return;
+    if (editingId === block.id) return;
     e.preventDefault();
     setComposer(null);
 
@@ -168,20 +175,26 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
     let moved = false;
 
     setError(null);
-    setDrag({ id: block.id, topMin: origTop, durMin });
+    setDrag({ id: block.id, mode: "move", topMin: origTop, durMin });
 
     const onMove = (ev: PointerEvent) => {
       if (Math.abs(ev.clientY - startY) > 3) moved = true;
       const deltaMin = (ev.clientY - startY) / PX_PER_MIN;
       liveTop = Math.max(0, Math.min(snapMinutes(origTop + deltaMin), DAY_MINUTES - durMin));
-      setDrag({ id: block.id, topMin: liveTop, durMin });
+      setDrag({ id: block.id, mode: "move", topMin: liveTop, durMin });
     };
 
     const onUp = async () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
 
-      if (!moved || liveTop === origTop) {
+      if (!moved) {
+        // No drag → open the title editor on this block.
+        setDrag(null);
+        setEditingId(block.id);
+        return;
+      }
+      if (liveTop === origTop) {
         setDrag(null);
         return;
       }
@@ -203,6 +216,91 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+  }
+
+  // Largest duration this block can grow to, given the next neighbor.
+  const maxDurAt = useCallback(
+    (topMin: number, excludeId: string): number => {
+      let nextStart = DAY_MINUTES;
+      for (const b of blocksByStart) {
+        if (b.id === excludeId) continue;
+        const s = minutesFromDayStart(b.startUtc, dayStartUtc);
+        if (s > topMin) {
+          nextStart = s;
+          break;
+        }
+      }
+      return Math.max(15, nextStart - topMin);
+    },
+    [blocksByStart, dayStartUtc],
+  );
+
+  function startResize(e: React.PointerEvent, block: ScheduledBlock) {
+    if (block.source !== "kairos" || pendingId || isPast) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setComposer(null);
+    setEditingId(null);
+
+    const topMin = minutesFromDayStart(block.startUtc, dayStartUtc);
+    const origDur = durationMin(block);
+    const startY = e.clientY;
+    const cap = maxDurAt(topMin, block.id);
+    let liveDur = origDur;
+    let moved = false;
+
+    setError(null);
+    setDrag({ id: block.id, mode: "resize", topMin, durMin: origDur });
+
+    const onMove = (ev: PointerEvent) => {
+      if (Math.abs(ev.clientY - startY) > 3) moved = true;
+      const deltaMin = (ev.clientY - startY) / PX_PER_MIN;
+      liveDur = Math.max(15, Math.min(snapMinutes(origDur + deltaMin), cap));
+      setDrag({ id: block.id, mode: "resize", topMin, durMin: liveDur });
+    };
+
+    const onUp = async () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+
+      if (!moved || liveDur === origDur) {
+        setDrag(null);
+        return;
+      }
+
+      const newStart = new Date(dayStartMs + topMin * 60_000).toISOString();
+      const newEnd = new Date(dayStartMs + (topMin + liveDur) * 60_000).toISOString();
+
+      setPendingId(block.id);
+      const res = await rescheduleAction(block.id, newStart, newEnd);
+      setPendingId(null);
+      setDrag(null);
+
+      if (!res.ok) setError(res.error ?? "Could not resize.");
+      else {
+        setError(null);
+        router.refresh();
+      }
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  async function commitRename(blockId: string, nextTitle: string, originalTitle: string) {
+    const trimmed = nextTitle.trim();
+    setEditingId(null);
+    if (!trimmed || trimmed === originalTitle.trim()) return;
+
+    setPendingId(blockId);
+    const res = await renameBlockAction(blockId, trimmed);
+    setPendingId(null);
+
+    if (!res.ok) setError(res.error ?? "Could not rename.");
+    else {
+      setError(null);
+      router.refresh();
+    }
   }
 
   async function remove(e: React.MouseEvent, id: string) {
@@ -302,10 +400,12 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
           {/* Blocks */}
           {blocks.map((b) => {
             const isDragging = drag?.id === b.id;
+            const isResizing = isDragging && drag!.mode === "resize";
             const top = isDragging ? drag!.topMin : minutesFromDayStart(b.startUtc, dayStartUtc);
             const dur = isDragging ? drag!.durMin : durationMin(b);
             const height = Math.max(dur * PX_PER_MIN, 22);
             const movable = b.source === "kairos" && !isPast;
+            const isEditing = editingId === b.id;
 
             const startIso = new Date(dayStartMs + top * 60_000).toISOString();
             const endIso = new Date(dayStartMs + (top + dur) * 60_000).toISOString();
@@ -313,7 +413,9 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
             const cls = [
               "block",
               movable ? "block-kairos" : "",
-              isDragging ? "block-dragging" : "",
+              isDragging && !isResizing ? "block-dragging" : "",
+              isResizing ? "block-resizing" : "",
+              isEditing ? "block-editing" : "",
               pendingId === b.id ? "block-pending" : "",
               isPast ? "opacity-75" : "",
             ]
@@ -327,7 +429,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
                 style={{ top, height }}
                 onPointerDown={(e) => startDrag(e, b)}
               >
-                {movable && (
+                {movable && !isEditing && (
                   <button
                     type="button"
                     className="block-del"
@@ -349,10 +451,27 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
                     </svg>
                   </button>
                 )}
-                <div className="block-title">{b.title}</div>
+                {isEditing ? (
+                  <BlockTitleInput
+                    initial={b.title}
+                    onCommit={(next) => commitRename(b.id, next, b.title)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : (
+                  <div className="block-title">{b.title}</div>
+                )}
                 <div className="block-time">
                   {isDragging ? fmtRange(startIso, endIso) : fmtRange(b.startUtc, b.endUtc)}
                 </div>
+                {movable && !isEditing && (
+                  <div
+                    className="block-resize"
+                    onPointerDown={(e) => startResize(e, b)}
+                    role="separator"
+                    aria-orientation="horizontal"
+                    aria-label="Resize block duration"
+                  />
+                )}
               </div>
             );
           })}
@@ -439,6 +558,49 @@ function StatusLeft({
         </span>
       )}
     </button>
+  );
+}
+
+function BlockTitleInput({
+  initial,
+  onCommit,
+  onCancel,
+}: {
+  initial: string;
+  onCommit: (next: string) => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [value, setValue] = useState(initial);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, []);
+
+  return (
+    <input
+      ref={ref}
+      className="block-title-input"
+      value={value}
+      maxLength={140}
+      spellCheck={false}
+      onChange={(e) => setValue(e.target.value)}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onCommit(value);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+      onBlur={() => onCommit(value)}
+      aria-label="Block title"
+    />
   );
 }
 

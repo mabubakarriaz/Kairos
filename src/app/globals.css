@@ -274,6 +274,42 @@
   .block-title-input::selection {
     background-color: rgb(var(--accent) / 0.35);
   }
+  /* Inline block editor — title row + labels row, stacked inside the block's
+     own footprint so editing stays a "this block becomes a tiny composer"
+     moment rather than a modal. Both inputs inherit the block's amber wash;
+     the Editing Ring (.block-editing) marks the active edit zone. */
+  .block-editor {
+    @apply flex min-w-0 flex-col;
+    gap: 2px;
+  }
+  .block-labels-row {
+    @apply flex min-w-0 items-center gap-1.5;
+    margin-top: 1px;
+  }
+  .block-labels-sigil {
+    @apply text-[10px] font-medium leading-none;
+    color: rgb(var(--accent-strong) / 0.6);
+  }
+  .block-labels-input {
+    @apply block min-w-0 flex-1 bg-transparent text-[10px] leading-none outline-none;
+    color: rgb(var(--accent-strong));
+    font-family: var(--font-mono-stack);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    caret-color: rgb(var(--accent-strong));
+  }
+  .block-labels-input::placeholder {
+    color: rgb(var(--accent-strong) / 0.4);
+  }
+  .block-labels-input::selection {
+    background-color: rgb(var(--accent) / 0.35);
+  }
   .block-time {
     @apply mt-0.5 truncate text-[10px] leading-tight;
     color: rgb(var(--accent-strong) / 0.75);
@@ -406,25 +442,42 @@
     letter-spacing: 0.01em;
   }
 
-  /* ── Now mark — gutter-only. The full-width hairline that used to cross the
-     grid is gone; what remains is a single tabular-mono timestamp tucked into
-     the hour gutter at the current minute, with a small ember dot to its right.
-     "Where am I in the day right now" is answered in the gutter, never on the
-     schedule. The active block carries its own ember tells (block-active fill
-     + NOW glyph + "X left" tail). */
+  /* ── Now mark — a 1px Ember hairline spanning the grid body plus a tabular-
+     mono `now · HH:MM` chip pinned to the right edge of that line. The chip
+     sits outside the 48px hour gutter so it never collides with the
+     9a / 10a / 11a hour-of-day labels. The active block still carries its own
+     ember tells (block-active fill + NOW glyph + "X left" tail). */
+  .now-line {
+    @apply pointer-events-none absolute left-12 right-0 h-px;
+    background-color: rgb(var(--now));
+    z-index: 19;
+  }
+  /* Week view: the line is column-scoped, so it should reach both edges of
+     the day-column body. */
+  .week-col .now-line {
+    @apply left-0;
+  }
   .now-label {
-    @apply pointer-events-none absolute left-0 w-12 -translate-y-1/2 pr-3 text-right text-[10px] font-semibold;
+    @apply pointer-events-none absolute -translate-y-1/2 inline-flex items-center gap-1.5 text-[10px] font-semibold;
+    right: 4px;
     color: rgb(var(--now));
     letter-spacing: 0.02em;
     z-index: 20;
+    /* A faint warm-surface backing so the line doesn't bleed through the
+       baseline of the text. */
+    background-color: rgb(var(--surface));
+    padding: 1px 4px 1px 5px;
+    border-radius: 2px;
   }
-  .now-label::after {
-    content: "";
-    @apply absolute h-1.5 w-1.5 rounded-full;
-    right: 2px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgb(var(--now));
+  .now-label-tag {
+    @apply uppercase leading-none;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: rgb(var(--now));
+    opacity: 0.85;
+  }
+  .now-label-time {
+    @apply leading-none;
   }
 
   /* ── Active block — the one the current minute is inside. A chromatic-only
@@ -996,18 +1049,34 @@
     @apply ml-1 text-[10px] font-medium leading-none;
     color: rgb(var(--text-faint));
   }
-  /* Booked-share bar — anchored to the cell's bottom edge, exactly one hour-
-     line in weight (1px) plus the inset spacer to feel like a sediment line. */
+  /* Booked-share bar — a 100% width sediment line anchored to the cell's
+     bottom edge. The track sits in Graphite Mist (`--free`) signifying open
+     time; an inner fill in Burnt Ochre (`--accent`) covers the booked share.
+     Empty days show a clean graphite hairline; fully-booked days show a solid
+     ochre bar. The split is what reads at a glance. */
   .month-cell-bar {
-    @apply pointer-events-none absolute left-2 bottom-1.5 h-[2px] rounded-full;
-    background-color: rgb(var(--accent) / 0.45);
-    max-width: calc(100% - 1rem);
+    @apply pointer-events-none absolute left-2 right-2 bottom-1.5 block h-[3px] overflow-hidden rounded-full;
+    background-color: rgb(var(--free) / 0.32);
+  }
+  .month-cell-bar-booked {
+    @apply block h-full rounded-full;
+    background-color: rgb(var(--accent) / 0.7);
+    transition: width 220ms var(--ease-snap);
   }
   .month-cell[data-today="true"] .month-cell-bar {
-    background-color: rgb(var(--accent) / 0.7);
+    background-color: rgb(var(--free) / 0.42);
+  }
+  .month-cell[data-today="true"] .month-cell-bar-booked {
+    background-color: rgb(var(--accent));
   }
   .month-cell[data-otherMonth="true"] .month-cell-bar {
-    background-color: rgb(var(--text-faint) / 0.3);
+    background-color: rgb(var(--text-faint) / 0.18);
+  }
+  .month-cell[data-otherMonth="true"] .month-cell-bar-booked {
+    background-color: rgb(var(--text-faint) / 0.45);
+  }
+  .month-cell[data-past="true"]:not([data-today="true"]) .month-cell-bar-booked {
+    background-color: rgb(var(--accent) / 0.5);
   }
 
   /* ── Filter-dim ───────────────────────────────────────────────────────────── */

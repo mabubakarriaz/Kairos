@@ -116,8 +116,12 @@ export async function deleteBlockSeriesFrom(blockId: string): Promise<Result> {
   return { ok: true };
 }
 
-/** Rename the task behind a Kairos block. Gcal blocks are read-only. */
-export async function renameBlock(blockId: string, title: string): Promise<Result> {
+/** Edit the task behind a Kairos block — title and/or tags in one statement.
+ *  Gcal blocks are read-only. */
+export async function editBlock(
+  blockId: string,
+  patch: { title: string; tags: string[] },
+): Promise<Result> {
   const supabase = getSupabase();
 
   const { data: existing, error: fetchErr } = await supabase
@@ -134,7 +138,7 @@ export async function renameBlock(blockId: string, title: string): Promise<Resul
 
   const { error } = await supabase
     .from("tasks")
-    .update({ title })
+    .update({ title: patch.title, tags: patch.tags })
     .eq("id", existing.task_id);
 
   if (error) return { ok: false, error: error.message };

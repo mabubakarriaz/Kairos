@@ -117,13 +117,12 @@ export function MonthGrid({
                   )}
                 </span>
               )}
-              {stats.bookedMin > 0 && (
+              <span className="month-cell-bar" aria-hidden="true">
                 <span
-                  className="month-cell-bar"
-                  aria-hidden="true"
+                  className="month-cell-bar-booked"
                   style={{ width: `${sharePct}%` }}
                 />
-              )}
+              </span>
             </Link>
           );
         })}

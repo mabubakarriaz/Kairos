@@ -6,7 +6,7 @@ import { createTaskWithBlock } from "@/server/tasks";
 import {
   deleteBlock,
   deleteBlockSeriesFrom,
-  renameBlock,
+  editBlock,
   rescheduleBlock,
 } from "@/server/schedule";
 import {
@@ -206,14 +206,20 @@ export async function deleteCheckpointAction(input: {
   return { ok: true };
 }
 
-/** Rename the task attached to a Kairos block. */
-export async function renameBlockAction(blockId: string, title: string): Promise<ActionResult> {
+/** Edit the task attached to a Kairos block — title and labels in one shot. */
+export async function editBlockAction(
+  blockId: string,
+  title: string,
+  labelsRaw: string,
+): Promise<ActionResult> {
   if (!blockId) return { ok: false, error: "Missing block id." };
   const trimmed = title.trim();
   if (!trimmed) return { ok: false, error: "Title is required." };
   if (trimmed.length > 140) return { ok: false, error: "Title is too long." };
 
-  const result = await renameBlock(blockId, trimmed);
+  const tags = parseLabelsInput(labelsRaw);
+
+  const result = await editBlock(blockId, { title: trimmed, tags });
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath("/");

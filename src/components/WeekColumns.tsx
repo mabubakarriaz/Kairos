@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { deleteBlockAction, renameBlockAction, rescheduleAction } from "@/app/actions";
+import { deleteBlockAction, editBlockAction, rescheduleAction } from "@/app/actions";
 import {
   DAY_MINUTES,
   PX_PER_MIN,
@@ -432,16 +432,22 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
     window.addEventListener("pointerup", onUp);
   }
 
-  async function commitRename(blockId: string, nextTitle: string, originalTitle: string) {
-    const trimmed = nextTitle.trim();
+  async function commitEdit(
+    block: ScheduledBlock,
+    nextTitle: string,
+    nextLabelsRaw: string,
+  ) {
     setEditingId(null);
-    if (!trimmed || trimmed === originalTitle.trim()) return;
+    const trimmed = nextTitle.trim();
+    if (!trimmed) return;
+    const originalLabelsRaw = block.tags.join(", ");
+    if (trimmed === block.title.trim() && nextLabelsRaw.trim() === originalLabelsRaw) return;
 
-    setPendingId(blockId);
-    const res = await renameBlockAction(blockId, trimmed);
+    setPendingId(block.id);
+    const res = await editBlockAction(block.id, trimmed, nextLabelsRaw);
     setPendingId(null);
 
-    if (!res.ok) setError(res.error ?? "Could not rename.");
+    if (!res.ok) setError(res.error ?? "Could not save.");
     else {
       setError(null);
       router.refresh();
@@ -750,19 +756,22 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                             />
                           )}
                           {isEditing ? (
-                            <BlockTitleInput
-                              initial={b.title}
-                              onCommit={(next) => commitRename(b.id, next, b.title)}
+                            <BlockEditor
+                              initialTitle={b.title}
+                              initialLabels={b.tags.join(", ")}
+                              onCommit={(nt, nl) => commitEdit(b, nt, nl)}
                               onCancel={() => setEditingId(null)}
                             />
                           ) : (
                             <div className="block-title">{b.title}</div>
                           )}
-                          <BlockTimeLine
-                            startMin={topMin}
-                            endMin={topMin + dur}
-                            nowMin={isTodayCol ? nowMin : null}
-                          />
+                          {!isEditing && (
+                            <BlockTimeLine
+                              startMin={topMin}
+                              endMin={topMin + dur}
+                              nowMin={isTodayCol ? nowMin : null}
+                            />
+                          )}
                           {movable && !isEditing && (
                             <div
                               className="block-resize"
@@ -809,16 +818,26 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                       />
                     )}
 
+                    {/* Now-mark — scoped to today's column so the hairline lives
+                        inside today's vertical lane, not stretched across the
+                        whole week (which would imply now is everywhere at once). */}
+                    {isTodayCol && nowMin !== null && nowMin >= 0 && nowMin <= DAY_MINUTES && (
+                      <>
+                        <div
+                          className="now-line"
+                          style={{ top: nowMin * PX_PER_MIN }}
+                          aria-hidden="true"
+                        />
+                        <div className="now-label" style={{ top: nowMin * PX_PER_MIN }}>
+                          <span className="now-label-tag">now</span>
+                          <span className="now-label-time num">{fmtClock(nowMin)}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })}
             </div>
-
-            {todayIdx >= 0 && nowMin !== null && nowMin >= 0 && nowMin <= DAY_MINUTES && (
-              <div className="now-label" style={{ top: nowMin * PX_PER_MIN }}>
-                {fmtClock(nowMin)}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -956,46 +975,97 @@ function BlockTimeLine({
   );
 }
 
-function BlockTitleInput({
-  initial,
+function BlockEditor({
+  initialTitle,
+  initialLabels,
   onCommit,
   onCancel,
 }: {
-  initial: string;
-  onCommit: (next: string) => void;
+  initialTitle: string;
+  initialLabels: string;
+  onCommit: (nextTitle: string, nextLabels: string) => void;
   onCancel: () => void;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState(initial);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const labelsRef = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [title, setTitle] = useState(initialTitle);
+  const [labels, setLabels] = useState(initialLabels);
+  const committedRef = useRef(false);
 
   useEffect(() => {
-    const el = ref.current;
+    const el = titleRef.current;
     if (!el) return;
     el.focus();
     el.select();
   }, []);
 
+  function commit() {
+    if (committedRef.current) return;
+    committedRef.current = true;
+    onCommit(title, labels);
+  }
+
+  function cancel() {
+    if (committedRef.current) return;
+    committedRef.current = true;
+    onCancel();
+  }
+
+  function onWrapBlur(e: React.FocusEvent<HTMLDivElement>) {
+    const next = e.relatedTarget as Node | null;
+    if (next && wrapRef.current && wrapRef.current.contains(next)) return;
+    commit();
+  }
+
   return (
-    <input
-      ref={ref}
-      className="block-title-input"
-      value={value}
-      maxLength={140}
-      spellCheck={false}
-      onChange={(e) => setValue(e.target.value)}
+    <div
+      ref={wrapRef}
+      className="block-editor"
       onPointerDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          onCommit(value);
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          onCancel();
-        }
-      }}
-      onBlur={() => onCommit(value)}
-      aria-label="Block title"
-    />
+      onBlur={onWrapBlur}
+    >
+      <input
+        ref={titleRef}
+        className="block-title-input"
+        value={title}
+        maxLength={140}
+        spellCheck={false}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            labelsRef.current?.focus();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancel();
+          }
+        }}
+        aria-label="Block title"
+      />
+      <div className="block-labels-row">
+        <span className="block-labels-sigil num" aria-hidden="true">#</span>
+        <input
+          ref={labelsRef}
+          className="block-labels-input"
+          value={labels}
+          maxLength={140}
+          spellCheck={false}
+          placeholder="labels"
+          onChange={(e) => setLabels(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+          aria-label="Labels"
+        />
+      </div>
+    </div>
   );
 }
 

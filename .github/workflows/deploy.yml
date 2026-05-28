@@ -27,7 +27,7 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Pre-flight safety gate. A bad migration is the only way the `migrate` job
       # could ever drop a user's data, so we refuse to deploy if anyone slipped a
@@ -65,7 +65,7 @@ jobs:
           fi
           echo "Migration safety guard passed (${#files[@]} file(s) scanned)."
 
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v2
         with:
           # Pin an exact version: `latest` resolves via the GitHub API and gets
           # rate-limited on frequent runs ("Failed to resolve latest ... rate limit").
@@ -87,7 +87,9 @@ jobs:
           echo "── Applying migrations ──────────────────────────────────"
           # NOTE: we deliberately do NOT pass --include-seed or --include-roles.
           # seed.sql is for local `supabase db reset` only — never for prod.
-          supabase db push --linked -y
+          # `--yes` is the global non-interactive flag (the old `-y` shorthand was
+          # removed in supabase CLI v2; only --yes is accepted now).
+          supabase db push --linked --yes
 
   # 2) Build and deploy the Next.js app to Vercel (production).
   deploy:
@@ -97,9 +99,9 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
 

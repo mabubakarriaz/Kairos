@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen antialiased">
         <ThemeToggle />
-        <main className="mx-auto max-w-3xl px-6 pb-12 pt-10 sm:px-8">{children}</main>
+        <main className="px-6 pb-12 pt-10 sm:px-8">{children}</main>
         <Analytics />
         <SpeedInsights />
       </body>

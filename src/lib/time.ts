@@ -30,6 +30,21 @@ export function dayWindowUtc(date: string): { startUtc: string; endUtc: string }
   return { startUtc: start.toISOString(), endUtc: end.toISOString() };
 }
 
+/** Number of columns rendered side-by-side in the week view. */
+export const WEEK_DAYS = 5;
+
+/** Half-open UTC window covering WEEK_DAYS consecutive days starting at `date`. */
+export function weekWindowUtc(date: string): { startUtc: string; endUtc: string } {
+  const start = new Date(`${date}T00:00:00.000Z`);
+  const end = new Date(start.getTime() + WEEK_DAYS * DAY_MINUTES * 60_000);
+  return { startUtc: start.toISOString(), endUtc: end.toISOString() };
+}
+
+/** The list of yyyy-mm-dd dates rendered in the week view, anchored at `date`. */
+export function weekDates(date: string): string[] {
+  return Array.from({ length: WEEK_DAYS }, (_, i) => addDays(date, i));
+}
+
 /** Shift a yyyy-mm-dd date by n days (UTC). */
 export function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00.000Z`);

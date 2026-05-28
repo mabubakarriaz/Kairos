@@ -334,6 +334,7 @@
   }
   .scroll-area::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
   }
   .scroll-area::-webkit-scrollbar-track {
     background: transparent;
@@ -343,5 +344,118 @@
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: content-box;
+  }
+
+  /* ── Week view ────────────────────────────────────────────────────────────── */
+  /* Five day-columns sharing one hour gutter. The hourly hairlines live on the
+     canvas, behind the columns. Each column is its own positioning context for
+     blocks, free-slots, composer, and now-line. */
+  .week-grid {
+    position: relative;
+    min-width: 760px;
+  }
+  /* Sticky weekday strip — vertical-stick within scroll, scrolls horizontally with body. */
+  .week-headers {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    display: grid;
+    grid-template-columns: 48px repeat(5, 1fr);
+    background-color: rgb(var(--surface));
+    border-bottom: 1px solid rgb(var(--border));
+  }
+  .week-header-spacer {
+    /* The empty cell that aligns with the hour gutter. */
+    border-right: 1px solid rgb(var(--border));
+  }
+  .week-col-header {
+    @apply flex items-baseline justify-between gap-2 px-3 py-2;
+    border-right: 1px solid rgb(var(--border));
+  }
+  .week-col-header:last-child {
+    border-right: 0;
+  }
+  .week-col-header[data-today="true"] {
+    background-color: rgb(var(--accent) / 0.06);
+  }
+  .week-col-header[data-past="true"] .week-col-day,
+  .week-col-header[data-past="true"] .week-col-date {
+    color: rgb(var(--text-faint));
+  }
+  .week-col-day {
+    @apply text-[11px] font-medium uppercase tracking-[0.12em] text-ink-muted;
+  }
+  .week-col-header[data-today="true"] .week-col-day {
+    color: rgb(var(--accent-strong));
+  }
+  .week-col-date {
+    @apply text-[15px] font-semibold leading-none tracking-tight text-ink;
+  }
+  .week-col-header[data-today="true"] .week-col-date {
+    color: rgb(var(--accent-strong));
+  }
+
+  /* The scrolling body — hour gutter + 5 transparent columns over hourly hairlines. */
+  .week-canvas {
+    position: relative;
+    /* Hourly hairlines span the whole canvas, so they line up across all 5 columns. */
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgb(var(--grid-line)) 0 1px,
+      transparent 1px 96px
+    );
+  }
+  .week-cols {
+    @apply absolute inset-y-0;
+    left: 48px;
+    right: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .week-col {
+    position: relative;
+    border-right: 1px solid rgb(var(--border));
+  }
+  .week-col:last-child {
+    border-right: 0;
+  }
+  .week-col[data-today="true"] {
+    background-color: rgb(var(--accent) / 0.025);
+  }
+
+  /* Column-local element placement. Override the day-grid's left-12/right-1 insets. */
+  .week-col .grid-catcher {
+    left: 0;
+    right: 0;
+  }
+  .week-col .block,
+  .week-col .freeslot,
+  .week-col .composer {
+    left: 3px;
+    right: 3px;
+  }
+  .week-col .freeslot-label {
+    /* Tighter in narrow columns so the timestamp doesn't crowd the hairline. */
+    @apply text-[9px];
+  }
+  .week-col .block-title {
+    @apply text-[12px];
+  }
+  .week-col .block-time {
+    @apply text-[10px];
+  }
+  .week-col .now-line {
+    left: 0;
+    right: 0;
+  }
+  /* The line + the gutter timestamp carry the signal; the gutter dot would
+     either crowd the column edge or protrude into the neighbor. Hide it. */
+  .week-col .now-line::before {
+    display: none;
+  }
+  /* Empty-future-day whisper: a single thin line inside the column. */
+  .week-col-empty {
+    @apply absolute left-0 right-0 text-center text-[10px] uppercase tracking-[0.18em] text-ink-faint;
+    pointer-events: none;
   }
 }

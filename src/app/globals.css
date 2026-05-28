@@ -126,108 +126,15 @@
     @apply pointer-events-auto;
   }
 
-  /* TZ chip — text-led affordance, the active zone short label is always visible. */
+  /* TZ chip — text-led toggle. Click cycles between the two zones. Mirrors the
+     theme glyph's interaction model (advance-on-click), no menu, no popover. */
   .tz-chip {
-    @apply inline-flex h-7 items-center justify-center rounded-md px-2 text-[11px] font-medium leading-none tracking-[0.04em];
+    @apply inline-flex h-7 items-center justify-center rounded-md px-2 text-[11px] font-medium leading-none;
     @apply text-ink-faint transition-colors duration-200 ease-snap;
     @apply hover:bg-raised hover:text-ink;
     @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
     min-width: 2.5rem;
     letter-spacing: 0.06em;
-  }
-  .tz-chip[aria-expanded="true"] {
-    @apply bg-raised text-ink;
-  }
-
-  /* TZ popover — surface, hairline, soft shadow. Same family as .composer. */
-  .tz-popover {
-    @apply absolute right-0 top-[calc(100%+6px)] min-w-[260px] rounded-md p-1;
-    background-color: rgb(var(--surface));
-    border: 1px solid rgb(var(--border));
-    box-shadow:
-      0 1px 0 rgb(var(--shadow) / 0.04),
-      0 14px 36px -10px rgb(var(--shadow) / 0.28);
-    animation: tz-pop 140ms cubic-bezier(0.22, 1, 0.36, 1);
-    transform-origin: top right;
-  }
-  @keyframes tz-pop {
-    from {
-      opacity: 0;
-      transform: translateY(-4px) scale(0.985);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-  .tz-popover-head {
-    @apply flex items-baseline justify-between gap-3 px-2 pt-2 pb-1.5;
-    border-bottom: 1px solid rgb(var(--border));
-    margin-bottom: 2px;
-  }
-  .tz-popover-title {
-    @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-muted;
-  }
-  .tz-popover-default-hint {
-    @apply text-[10px] uppercase tracking-[0.16em] text-ink-faint;
-  }
-  .tz-popover-list {
-    @apply m-0 flex list-none flex-col p-0;
-  }
-  .tz-row {
-    @apply relative flex w-full items-baseline gap-3 rounded-sm px-2 py-1.5 text-left;
-    @apply transition-colors duration-150 ease-snap;
-    color: rgb(var(--text-muted));
-  }
-  .tz-row:hover {
-    background-color: rgb(var(--accent) / 0.07);
-    color: rgb(var(--text));
-  }
-  .tz-row:focus-visible {
-    outline: none;
-    background-color: rgb(var(--accent) / 0.07);
-    color: rgb(var(--text));
-    box-shadow: inset 0 0 0 1px rgb(var(--accent) / 0.55);
-  }
-  .tz-row[data-selected] {
-    color: rgb(var(--accent-strong));
-  }
-  .tz-row[data-selected]::before {
-    /* A thin amber rail on the left says "current" without resorting to a side-stripe card. */
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 8px;
-    bottom: 8px;
-    width: 2px;
-    border-radius: 2px;
-    background-color: rgb(var(--accent));
-  }
-  .tz-row-short {
-    @apply text-[11px] font-semibold tracking-[0.06em];
-    width: 2.5rem;
-    flex: 0 0 auto;
-    color: rgb(var(--text));
-  }
-  .tz-row[data-selected] .tz-row-short {
-    color: rgb(var(--accent-strong));
-  }
-  .tz-row-long {
-    @apply flex-1 truncate text-[13px] leading-tight;
-    letter-spacing: -0.005em;
-  }
-  .tz-row-offset {
-    @apply text-[11px] leading-tight;
-    color: rgb(var(--text-faint));
-  }
-  .tz-row[data-selected] .tz-row-offset,
-  .tz-row:hover .tz-row-offset {
-    color: rgb(var(--text-muted));
-  }
-  .tz-row-check {
-    @apply h-3 w-3;
-    flex: 0 0 auto;
-    color: rgb(var(--accent-strong));
   }
 
   /* ── App chrome — minimal. Just two atoms: glyph-button and quiet status line. */
@@ -534,12 +441,12 @@
   }
 
   /* ── Week view ────────────────────────────────────────────────────────────── */
-  /* Five day-columns sharing one hour gutter. The hourly hairlines live on the
-     canvas, behind the columns. Each column is its own positioning context for
-     blocks, free-slots, composer, and now-line. */
+  /* Seven day-columns (Mon..Sun) sharing one hour gutter. The hourly hairlines
+     live on the canvas, behind the columns. Each column is its own positioning
+     context for blocks, free-slots, composer, and now-line. */
   .week-grid {
     position: relative;
-    min-width: 760px;
+    min-width: 980px;
   }
   /* Sticky weekday strip — vertical-stick within scroll, scrolls horizontally with body. */
   .week-headers {
@@ -547,7 +454,7 @@
     top: 0;
     z-index: 25;
     display: grid;
-    grid-template-columns: 48px repeat(5, 1fr);
+    grid-template-columns: 48px repeat(7, 1fr);
     background-color: rgb(var(--surface));
     border-bottom: 1px solid rgb(var(--border));
   }
@@ -597,7 +504,7 @@
     left: 48px;
     right: 0;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(7, 1fr);
   }
   .week-col {
     position: relative;

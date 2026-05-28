@@ -5,7 +5,9 @@ import { WeekColumns, type WeekDay } from "@/components/WeekColumns";
 import { getBlocksInRange } from "@/server/schedule";
 import { getFreeSlots } from "@/server/freeslots";
 import {
+  addDays,
   dayWindow,
+  mondayOf,
   normalizeDate,
   todayInTz,
   weekDates,
@@ -31,7 +33,18 @@ function parseView(input: string | undefined | null): View {
 async function resolveTz(): Promise<string> {
   const jar = await cookies();
   const raw = jar.get(TZ_COOKIE)?.value;
-  return raw && isValidTimeZone(raw) ? raw : DEFAULT_TZ;
+  // Decode defensively — historical cookies may carry the URL-encoded form
+  // (e.g. "Asia%2FKarachi") from an earlier build that called encodeURIComponent.
+  const decoded = raw ? safeDecode(raw) : undefined;
+  return decoded && isValidTimeZone(decoded) ? decoded : DEFAULT_TZ;
+}
+
+function safeDecode(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 export default async function Page({
@@ -43,7 +56,9 @@ export default async function Page({
   const tz = await resolveTz();
   const date = normalizeDate(dateParam, tz);
   const view = parseView(viewParam);
-  const isToday = date === todayInTz(tz);
+  const today = todayInTz(tz);
+  // Day mode: "today" means this date is today. Week mode: "today" means this week contains today.
+  const isToday = view === "day" ? date === today : mondayOf(date) === mondayOf(today);
 
   return (
     <div className={view === "week" ? "mx-auto max-w-7xl" : "mx-auto max-w-3xl"}>
@@ -96,7 +111,7 @@ async function WeekView({ date, tz }: { date: string; tz: string }) {
   // One ranged blocks query + WEEK_DAYS parallel per-day free-slot queries.
   const dayWindows = dates.map((d) => {
     const start = zonedDayStartUtc(d, tz);
-    const end = zonedDayStartUtc(addOneDay(d), tz);
+    const end = zonedDayStartUtc(addDays(d, 1), tz);
     return { date: d, startUtc: start, endUtc: end };
   });
 
@@ -136,12 +151,6 @@ async function WeekView({ date, tz }: { date: string; tz: string }) {
       <WeekColumns days={days} today={today} />
     </>
   );
-}
-
-function addOneDay(date: string): string {
-  const d = new Date(`${date}T00:00:00.000Z`);
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
 }
 
 function errMsg(e: unknown): string {

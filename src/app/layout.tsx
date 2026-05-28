@@ -33,7 +33,13 @@ const themeInit = `(function(){try{var t=localStorage.getItem('kairos-theme');va
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
   const raw = jar.get(TZ_COOKIE)?.value;
-  const tz = raw && isValidTimeZone(raw) ? raw : DEFAULT_TZ;
+  let decoded: string | undefined;
+  try {
+    decoded = raw ? decodeURIComponent(raw) : undefined;
+  } catch {
+    decoded = raw;
+  }
+  const tz = decoded && isValidTimeZone(decoded) ? decoded : DEFAULT_TZ;
 
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>

@@ -62,11 +62,19 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
     return () => clearInterval(id);
   }, [isToday, dayStartMs]);
 
-  // First-paint scroll: bring "now" into view on today, otherwise 08:00.
+  // First-paint scroll: on today, anchor so the now-line sits 60 minutes below
+  // the scroll top (1 hour of context above, the rest of the day below).
+  // Compute "now" synchronously — the tick's setState hasn't run yet on mount.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const targetMin = isToday && nowMin != null ? Math.max(0, nowMin - 60) : 8 * 60;
+    let targetMin: number;
+    if (isToday) {
+      const synchronousNow = (Date.now() - dayStartMs) / 60_000;
+      targetMin = Math.max(0, synchronousNow - 60);
+    } else {
+      targetMin = 6 * 60; // neutral pre-dawn anchor for past/future days
+    }
     el.scrollTop = targetMin * PX_PER_MIN;
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -360,17 +368,21 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
 
           {/* Free-slot ghosts: top hairline + tiny timestamp at top-left */}
           {visibleFreeSlots.map((s, i) => {
-            const top = minutesFromDayStart(s.startUtc, dayStartUtc);
+            const topMin = minutesFromDayStart(s.startUtc, dayStartUtc);
             const height = s.minutes * PX_PER_MIN;
-            if (top === 0 && height >= DAY_MINUTES * PX_PER_MIN - 1) {
+            if (topMin === 0 && height >= DAY_MINUTES * PX_PER_MIN - 1) {
               // Full-day ghost — skip to avoid a single hairline at the very top.
               return null;
             }
             return (
-              <div key={`free-${i}`} className="freeslot" style={{ top, height }}>
+              <div
+                key={`free-${i}`}
+                className="freeslot"
+                style={{ top: topMin * PX_PER_MIN, height }}
+              >
                 {height >= 22 && (
                   <span className="freeslot-label">
-                    {fmtHHMM(top)} · {fmtDuration(s.minutes)} free
+                    {fmtHHMM(topMin)} · {fmtDuration(s.minutes)} free
                   </span>
                 )}
               </div>
@@ -402,7 +414,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
           {blocks.map((b) => {
             const isDragging = drag?.id === b.id;
             const isResizing = isDragging && drag!.mode === "resize";
-            const top = isDragging ? drag!.topMin : minutesFromDayStart(b.startUtc, dayStartUtc);
+            const topMin = isDragging ? drag!.topMin : minutesFromDayStart(b.startUtc, dayStartUtc);
             const dur = isDragging ? drag!.durMin : durationMin(b);
             const height = Math.max(dur * PX_PER_MIN, 22);
             const movable = b.source === "kairos" && !isPast;
@@ -424,7 +436,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
               <div
                 key={b.id}
                 className={cls}
-                style={{ top, height }}
+                style={{ top: topMin * PX_PER_MIN, height }}
                 onPointerDown={(e) => startDrag(e, b)}
               >
                 {movable && !isEditing && (
@@ -459,8 +471,8 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
                   <div className="block-title">{b.title}</div>
                 )}
                 <BlockTimeLine
-                  startMin={top}
-                  endMin={top + dur}
+                  startMin={topMin}
+                  endMin={topMin + dur}
                   nowMin={isToday ? nowMin : null}
                 />
                 {movable && !isEditing && (

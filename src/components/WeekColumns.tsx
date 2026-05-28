@@ -76,7 +76,14 @@ export function WeekColumns({ days, today }: Props) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const targetMin = todayIdx >= 0 && nowMin != null ? Math.max(0, nowMin - 60) : 8 * 60;
+    let targetMin: number;
+    if (todayIdx >= 0) {
+      const dayStartMs = new Date(days[todayIdx].dayStartUtc).getTime();
+      const synchronousNow = (Date.now() - dayStartMs) / 60_000;
+      targetMin = Math.max(0, synchronousNow - 60);
+    } else {
+      targetMin = 6 * 60;
+    }
     el.scrollTop = targetMin * PX_PER_MIN;
     // mount only
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -468,14 +475,18 @@ export function WeekColumns({ days, today }: Props) {
                     )}
 
                     {visibleFreeSlots.map((s, idx) => {
-                      const top = minutesFromDayStart(s.startUtc, dayStartUtc);
+                      const topMin = minutesFromDayStart(s.startUtc, dayStartUtc);
                       const height = s.minutes * PX_PER_MIN;
-                      if (top === 0 && height >= GRID_HEIGHT - 1) return null;
+                      if (topMin === 0 && height >= GRID_HEIGHT - 1) return null;
                       return (
-                        <div key={`free-${idx}`} className="freeslot" style={{ top, height }}>
+                        <div
+                          key={`free-${idx}`}
+                          className="freeslot"
+                          style={{ top: topMin * PX_PER_MIN, height }}
+                        >
                           {height >= 22 && (
                             <span className="freeslot-label">
-                              {fmtHHMM(top)} · {fmtDuration(s.minutes)}
+                              {fmtHHMM(topMin)} · {fmtDuration(s.minutes)}
                             </span>
                           )}
                         </div>
@@ -488,7 +499,7 @@ export function WeekColumns({ days, today }: Props) {
                       }
                       const isDragging = drag?.id === b.id && drag.dstDateIdx === i;
                       const isResizing = isDragging && drag!.mode === "resize";
-                      const top = isDragging
+                      const topMin = isDragging
                         ? drag!.topMin
                         : minutesFromDayStart(b.startUtc, dayStartUtc);
                       const dur = isDragging ? drag!.durMin : durationMin(b);
@@ -512,7 +523,7 @@ export function WeekColumns({ days, today }: Props) {
                         <div
                           key={b.id}
                           className={cls}
-                          style={{ top, height }}
+                          style={{ top: topMin * PX_PER_MIN, height }}
                           onPointerDown={(e) => startDrag(e, b, i)}
                         >
                           {movable && !isEditing && (
@@ -547,8 +558,8 @@ export function WeekColumns({ days, today }: Props) {
                             <div className="block-title">{b.title}</div>
                           )}
                           <BlockTimeLine
-                            startMin={top}
-                            endMin={top + dur}
+                            startMin={topMin}
+                            endMin={topMin + dur}
                             nowMin={isTodayCol ? nowMin : null}
                           />
                           {movable && !isEditing && (
@@ -567,19 +578,19 @@ export function WeekColumns({ days, today }: Props) {
                     {incomingDrag &&
                       (() => {
                         const b = incomingDrag.block;
-                        const top = incomingDrag.dragTop;
+                        const topMin = incomingDrag.dragTop;
                         const dur = incomingDrag.durMin;
                         const height = Math.max(dur * PX_PER_MIN, 22);
                         return (
                           <div
                             key={`incoming-${b.id}`}
                             className="block block-kairos block-dragging"
-                            style={{ top, height }}
+                            style={{ top: topMin * PX_PER_MIN, height }}
                           >
                             <div className="block-title">{b.title}</div>
                             <BlockTimeLine
-                              startMin={top}
-                              endMin={top + dur}
+                              startMin={topMin}
+                              endMin={topMin + dur}
                               nowMin={null}
                             />
                           </div>

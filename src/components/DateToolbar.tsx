@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { WEEK_DAYS, addDays, todayInTz } from "@/lib/time";
+import { WEEK_DAYS, addDays, mondayOf, todayInTz } from "@/lib/time";
 import { zoneFor } from "@/lib/timezone";
 
 type View = "day" | "week";
@@ -63,7 +63,7 @@ export function DateToolbar({
           aria-label={view === "week" ? "Week navigation" : "Day navigation"}
           className="flex items-center gap-0.5"
         >
-          <Link className="glyph-btn" href={prevHref} aria-label={view === "week" ? "Previous 5 days" : "Previous day"}>
+          <Link className="glyph-btn" href={prevHref} aria-label={view === "week" ? "Previous week" : "Previous day"}>
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M14 6l-6 6 6 6" />
             </svg>
@@ -77,7 +77,7 @@ export function DateToolbar({
           >
             Today
           </Link>
-          <Link className="glyph-btn" href={nextHref} aria-label={view === "week" ? "Next 5 days" : "Next day"}>
+          <Link className="glyph-btn" href={nextHref} aria-label={view === "week" ? "Next week" : "Next day"}>
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M10 6l6 6-6 6" />
             </svg>
@@ -142,8 +142,9 @@ function DayTitle({ date, isToday, tzShort }: { date: string; isToday: boolean; 
 }
 
 function WeekTitle({ date, tzShort }: { date: string; tzShort: string }) {
-  const first = utc(date);
-  const last = utc(addDays(date, WEEK_DAYS - 1));
+  const monday = mondayOf(date);
+  const first = utc(monday);
+  const last = utc(addDays(monday, WEEK_DAYS - 1));
   const sameMonth = first.getUTCMonth() === last.getUTCMonth();
   const sameYear = first.getUTCFullYear() === last.getUTCFullYear();
   const monthH1 = sameMonth

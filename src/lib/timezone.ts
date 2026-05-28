@@ -14,17 +14,17 @@ export interface ZoneEntry {
   long: string;
 }
 
-/** Curated list. Order is intentional — Karachi first, then the user's likely orbit. */
+/** Curated list. Single-user app — two opinions, no more. Cycle order is PKT → UTC → PKT. */
 export const ZONES: ZoneEntry[] = [
   { id: "Asia/Karachi", short: "PKT", long: "Karachi" },
   { id: "UTC", short: "UTC", long: "Coordinated Universal" },
-  { id: "Asia/Dubai", short: "GST", long: "Dubai" },
-  { id: "Asia/Kolkata", short: "IST", long: "Mumbai" },
-  { id: "Europe/London", short: "LON", long: "London" },
-  { id: "America/New_York", short: "NYC", long: "New York" },
-  { id: "Asia/Singapore", short: "SGT", long: "Singapore" },
-  { id: "Asia/Tokyo", short: "JST", long: "Tokyo" },
 ];
+
+/** Returns the zone after `current` in the cycle. Wraps. */
+export function nextZone(currentId: string): ZoneEntry {
+  const idx = ZONES.findIndex((z) => z.id === currentId);
+  return ZONES[(idx + 1) % ZONES.length] ?? ZONES[0];
+}
 
 const ZONE_BY_ID = new Map(ZONES.map((z) => [z.id, z]));
 

@@ -36,18 +36,28 @@ export function dayWindow(date: string, timeZone: string): { startUtc: string; e
 }
 
 /** Number of columns rendered side-by-side in the week view. */
-export const WEEK_DAYS = 5;
+export const WEEK_DAYS = 7;
 
-/** Half-open UTC window covering WEEK_DAYS consecutive days starting at `date`, in zone. */
+/** YYYY-MM-DD of the Monday in the calendar week containing `date`. */
+export function mondayOf(date: string): string {
+  const d = new Date(`${date}T00:00:00.000Z`);
+  const dow = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const back = (dow + 6) % 7; // Sun→6, Mon→0, Tue→1, ..., Sat→5
+  return addDays(date, -back);
+}
+
+/** Half-open UTC window covering the Monday-anchored week containing `date`, in zone. */
 export function weekWindow(date: string, timeZone: string): { startUtc: string; endUtc: string } {
-  const startUtc = zonedDayStartUtc(date, timeZone);
-  const endUtc = zonedDayStartUtc(addDays(date, WEEK_DAYS), timeZone);
+  const monday = mondayOf(date);
+  const startUtc = zonedDayStartUtc(monday, timeZone);
+  const endUtc = zonedDayStartUtc(addDays(monday, WEEK_DAYS), timeZone);
   return { startUtc, endUtc };
 }
 
-/** The list of yyyy-mm-dd dates rendered in the week view, anchored at `date`. */
+/** The seven YYYY-MM-DDs rendered in week view (Mon..Sun) for the week containing `date`. */
 export function weekDates(date: string): string[] {
-  return Array.from({ length: WEEK_DAYS }, (_, i) => addDays(date, i));
+  const monday = mondayOf(date);
+  return Array.from({ length: WEEK_DAYS }, (_, i) => addDays(monday, i));
 }
 
 /** Shift a yyyy-mm-dd date by n days. Calendar math — TZ-agnostic. */

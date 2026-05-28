@@ -10,7 +10,16 @@ import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone } from "@/lib/timezone";
 async function activeTz(): Promise<string> {
   const jar = await cookies();
   const raw = jar.get(TZ_COOKIE)?.value;
-  return raw && isValidTimeZone(raw) ? raw : DEFAULT_TZ;
+  const decoded = raw ? safeDecode(raw) : undefined;
+  return decoded && isValidTimeZone(decoded) ? decoded : DEFAULT_TZ;
+}
+
+function safeDecode(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 export interface ActionResult {

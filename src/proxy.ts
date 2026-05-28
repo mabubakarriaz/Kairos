@@ -14,7 +14,7 @@ export const config = {
   matcher: ["/((?!_next/static|_next/image|_next/data|favicon.ico).*)"],
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLoginPath = pathname === "/login";
 

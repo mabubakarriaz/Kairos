@@ -1,6 +1,6 @@
 /**
  * Session cookie signing — HMAC-SHA256 via Web Crypto so this module is safe to
- * import from both the Edge middleware and Node-runtime Server Actions / RSC.
+ * import from both the Edge proxy and Node-runtime Server Actions / RSC.
  *
  * The cookie value is `<expiresAtMs>.<sigHex>`. The signature covers the
  * expiresAtMs string. `crypto.subtle.verify` does the constant-time compare,

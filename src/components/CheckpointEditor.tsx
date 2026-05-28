@@ -7,7 +7,7 @@ import {
   deleteCheckpointAction,
   updateCheckpointAction,
 } from "@/app/actions";
-import { PX_PER_MIN, fmtHHMM } from "@/lib/time";
+import { PX_PER_MIN, fmtClock, fmtHHMM } from "@/lib/time";
 import { parseHHMM } from "./InlineComposer";
 
 interface BaseProps {
@@ -39,9 +39,14 @@ type Props = NewProps | EditProps;
 export function CheckpointEditor(props: Props) {
   const labelRef = useRef<HTMLInputElement>(null);
   const [label, setLabel] = useState(props.mode === "edit" ? props.label : "");
-  const [time, setTime] = useState(() =>
-    props.mode === "edit" ? props.at : fmtHHMM(props.topMin),
-  );
+  // Render the time in 12h; the server still wires the wall-clock as 24h so we
+  // normalize on submit. For edit mode, `props.at` arrives as "HH:MM" (24h) —
+  // parse it through the permissive parser and reformat for display.
+  const [time, setTime] = useState(() => {
+    const seedMin =
+      props.mode === "edit" ? parseHHMM(props.at) ?? 0 : props.topMin;
+    return fmtClock(seedMin);
+  });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -70,19 +75,21 @@ export function CheckpointEditor(props: Props) {
       labelRef.current?.focus();
       return;
     }
-    if (parseHHMM(time) == null) {
-      setError("Use HH:MM.");
+    const tMin = parseHHMM(time);
+    if (tMin == null) {
+      setError("Try 9:00 am or 13:00.");
       return;
     }
+    const at24 = fmtHHMM(tMin);
 
     setPending(true);
     const res =
       props.mode === "new"
-        ? await addCheckpointAction({ label: trimmed, at: time, date: props.date })
+        ? await addCheckpointAction({ label: trimmed, at: at24, date: props.date })
         : await updateCheckpointAction({
             id: props.id,
             label: trimmed,
-            at: time,
+            at: at24,
             date: props.date,
           });
     setPending(false);
@@ -137,7 +144,7 @@ export function CheckpointEditor(props: Props) {
         onChange={(e) => setTime(e.target.value)}
         onBlur={() => {
           const v = parseHHMM(time);
-          if (v != null) setTime(fmtHHMM(v));
+          if (v != null) setTime(fmtClock(v));
         }}
         aria-label="Checkpoint time"
         disabled={pending}

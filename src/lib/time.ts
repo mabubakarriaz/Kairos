@@ -6,6 +6,7 @@
 // stays zone-agnostic.
 
 import { todayInZone, zonedDayStartUtc, zonedWallClockToUtc } from "@/lib/timezone";
+import type { ScheduledBlock } from "@/lib/types";
 
 /** Minutes per grid slot — the schedule snaps drags/free-slots to this. */
 export const SLOT_MINUTES = 15;
@@ -98,7 +99,7 @@ export function snapMinutes(minutes: number): number {
   return Math.max(0, Math.min(DAY_MINUTES, snapped));
 }
 
-/** "HH:MM" from minutes-since-local-midnight. The renderer-side formatter. */
+/** "HH:MM" (24h) from minutes-since-local-midnight. Used as the storage/wire format. */
 export function fmtHHMM(minutes: number): string {
   // Allow values outside [0, DAY_MINUTES] for blocks that cross local midnight.
   const norm = ((Math.round(minutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
@@ -107,8 +108,53 @@ export function fmtHHMM(minutes: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-export function fmtRange(startMin: number, endMin: number): string {
-  return `${fmtHHMM(startMin)}–${fmtHHMM(endMin)}`;
+/**
+ * 12-hour wall-clock — "9:00 am", "12:30 pm", "12:00 am" (midnight).
+ * The user-facing time format. Period is lowercased and preceded by a thin
+ * space so it rides JetBrains Mono cleanly when wrapped in .num. Minutes are
+ * always two digits so columns of times line up.
+ */
+export function fmtClock(minutes: number): string {
+  const norm = ((Math.round(minutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+  const h24 = Math.floor(norm / 60);
+  const m = norm % 60;
+  const period = h24 < 12 ? "am" : "pm";
+  const h12 = ((h24 + 11) % 12) + 1;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * Compact hour-gutter label — "12a", "1a", "9a", "12p", "1p", "11p".
+ * Two chars + period letter. Reads as a printed timetable, fits the 48px gutter.
+ */
+export function fmtHourLabel(hour24: number): string {
+  const period = hour24 < 12 ? "a" : "p";
+  const h12 = ((hour24 + 11) % 12) + 1;
+  return `${h12}${period}`;
+}
+
+/**
+ * Time range, AM/PM-aware. When both ends share a period, collapse the suffix:
+ *   "9:00 – 9:45 am"
+ *   "11:30 am – 1:00 pm"
+ * The en-dash carries normal weight; callers wrap it in a faint span if they want.
+ */
+export function fmtClockRange(startMin: number, endMin: number): string {
+  const startPeriod = periodOf(startMin);
+  const endPeriod = periodOf(endMin);
+  const start = fmtClock(startMin);
+  const end = fmtClock(endMin);
+  if (startPeriod === endPeriod) {
+    // Drop the period from the first end.
+    const startNoPeriod = start.replace(/\s(?:am|pm)$/, "");
+    return `${startNoPeriod} – ${end}`;
+  }
+  return `${start} – ${end}`;
+}
+
+function periodOf(minutes: number): "am" | "pm" {
+  const norm = ((Math.round(minutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+  return norm < 12 * 60 ? "am" : "pm";
 }
 
 /** Humanize a slot duration, e.g. "1h 30m", "45m". */
@@ -121,23 +167,88 @@ export function fmtDuration(minutes: number): string {
 }
 
 /**
- * Time-meta for a block: the time range, plus either the full duration or
- * "X left" when the now-line is crossing the block (active === true).
- * Caller passes `nowMin = null` when the now-line is irrelevant (not today).
+ * "in 2h 15m" / "in 45m" / "in 1h". Used for future countdowns on blocks and
+ * checkpoints. Returns null when `deltaMin <= 0` so the caller can drop the
+ * trailer the moment time has passed.
+ */
+export function fmtCountdown(deltaMin: number): string | null {
+  if (deltaMin <= 0) return null;
+  // Round UP so 30s reads "in 1m", never "in 0m".
+  const total = Math.max(1, Math.ceil(deltaMin));
+  return `in ${fmtDuration(total)}`;
+}
+
+export type BlockTimeState = "past" | "active" | "future";
+
+/**
+ * Time-meta for a block: the time range, plus a single tail that names the
+ * block's relationship to *now*:
+ *   - past:   "45m"            (duration, ink-faint)
+ *   - active: "30m left"       (Ember tail — the now-line lives inside this block)
+ *   - future: "in 2h 15m"      (countdown, ink-faint)
+ * Caller passes `nowMin = null` when the now-line is irrelevant (not today);
+ * the block then reads as past (duration only) — fine for past/future days.
  */
 export function blockTimeMeta(args: {
   startMin: number;
   endMin: number;
   nowMin: number | null;
-}): { range: string; tail: string; active: boolean } {
-  const range = fmtRange(args.startMin, args.endMin);
-  const active =
-    args.nowMin != null && args.nowMin >= args.startMin && args.nowMin < args.endMin;
-  if (active) {
-    // Round UP so a block with 30s remaining reads "1m left", not "0m left".
-    const remaining = Math.max(1, Math.ceil(args.endMin - (args.nowMin as number)));
-    return { range, tail: `${fmtDuration(remaining)} left`, active: true };
+}): { range: string; tail: string; state: BlockTimeState } {
+  const range = fmtClockRange(args.startMin, args.endMin);
+  if (args.nowMin == null) {
+    const dur = Math.max(0, args.endMin - args.startMin);
+    return { range, tail: fmtDuration(dur), state: "past" };
   }
-  const dur = Math.max(0, args.endMin - args.startMin);
-  return { range, tail: fmtDuration(dur), active: false };
+  if (args.nowMin >= args.endMin) {
+    const dur = Math.max(0, args.endMin - args.startMin);
+    return { range, tail: fmtDuration(dur), state: "past" };
+  }
+  if (args.nowMin >= args.startMin) {
+    const remaining = Math.max(1, Math.ceil(args.endMin - args.nowMin));
+    return { range, tail: `${fmtDuration(remaining)} left`, state: "active" };
+  }
+  // future
+  const countdown = fmtCountdown(args.startMin - args.nowMin) ?? fmtDuration(0);
+  return { range, tail: countdown, state: "future" };
+}
+
+/**
+ * Allocations across a day — totals + per-label breakdown for the day analytics
+ * line. Labels can overlap (one block may carry several tags), so per-label
+ * totals can exceed booked total; that's the right reading because the user
+ * thinks of labels as orthogonal dimensions on the same time.
+ *
+ * `bookedMin` is the union of block durations; `openMin` is `DAY_MINUTES - bookedMin`.
+ * `byLabel` is sorted by descending minutes, then label asc for stable ordering.
+ */
+export interface DayStats {
+  bookedMin: number;
+  openMin: number;
+  byLabel: { label: string; minutes: number }[];
+}
+
+export function computeDayStats(blocks: ScheduledBlock[], dayStartUtc: string): DayStats {
+  let bookedMin = 0;
+  const labelMin = new Map<string, number>();
+  const dayStartMs = new Date(dayStartUtc).getTime();
+  const dayEndMs = dayStartMs + DAY_MINUTES * 60_000;
+  for (const b of blocks) {
+    const s = Math.max(dayStartMs, new Date(b.startUtc).getTime());
+    const e = Math.min(dayEndMs, new Date(b.endUtc).getTime());
+    if (e <= s) continue;
+    const dur = (e - s) / 60_000;
+    bookedMin += dur;
+    for (const t of b.tags) {
+      labelMin.set(t, (labelMin.get(t) ?? 0) + dur);
+    }
+  }
+  const byLabel = Array.from(labelMin, ([label, minutes]) => ({ label, minutes })).sort(
+    (a, b) => b.minutes - a.minutes || a.label.localeCompare(b.label),
+  );
+  const booked = Math.round(bookedMin);
+  return {
+    bookedMin: booked,
+    openMin: Math.max(0, DAY_MINUTES - booked),
+    byLabel,
+  };
 }

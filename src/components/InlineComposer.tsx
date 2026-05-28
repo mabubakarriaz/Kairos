@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addTaskAction } from "@/app/actions";
-import { PX_PER_MIN, fmtDuration, fmtHHMM } from "@/lib/time";
+import { PX_PER_MIN, fmtClock, fmtDuration, fmtHHMM } from "@/lib/time";
 import { parseLabelsInput } from "@/lib/labels";
 
 interface Props {
@@ -15,12 +15,34 @@ interface Props {
   onSubmitted: () => void;
 }
 
+/**
+ * Permissive wall-clock parser. Accepts:
+ *   "9", "9:30", "09:30"           → 24h (no period)
+ *   "9am", "9 am", "9:30 am"        → 12h
+ *   "9pm", "9:30pm"                 → 12h
+ *   "12am" → 0:00, "12pm" → 12:00
+ * Returns minutes-from-midnight, or null when the input is unparseable.
+ * Whitespace-insensitive; case-insensitive on the period. Kept under the
+ * old `parseHHMM` name so CheckpointEditor's import stays intact — it now
+ * also accepts 12h forms.
+ */
 export function parseHHMM(input: string): number | null {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(input.trim());
+  const cleaned = input.trim().toLowerCase().replace(/\s+/g, "");
+  if (!cleaned) return null;
+  const m = /^(\d{1,2})(?::(\d{2}))?(am|pm)?$/.exec(cleaned);
   if (!m) return null;
-  const hh = Number(m[1]);
-  const mm = Number(m[2]);
-  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+  let hh = Number(m[1]);
+  const mm = m[2] != null ? Number(m[2]) : 0;
+  const period = m[3] as "am" | "pm" | undefined;
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  if (mm < 0 || mm > 59) return null;
+  if (period) {
+    if (hh < 1 || hh > 12) return null;
+    hh = hh % 12;
+    if (period === "pm") hh += 12;
+  } else {
+    if (hh < 0 || hh > 23) return null;
+  }
   return hh * 60 + mm;
 }
 
@@ -30,8 +52,8 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
   const titleRef = useRef<HTMLInputElement>(null);
   const labelsRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
-  const [start, setStart] = useState(() => fmtHHMM(topMin));
-  const [end, setEnd] = useState(() => fmtHHMM(topMin + durMin));
+  const [start, setStart] = useState(() => fmtClock(topMin));
+  const [end, setEnd] = useState(() => fmtClock(topMin + durMin));
   const [labelsInput, setLabelsInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -43,8 +65,8 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
 
   // Reposition (e.g. user re-clicked the grid). Preserve the title they're typing.
   useEffect(() => {
-    setStart(fmtHHMM(topMin));
-    setEnd(fmtHHMM(topMin + durMin));
+    setStart(fmtClock(topMin));
+    setEnd(fmtClock(topMin + durMin));
   }, [topMin, durMin]);
 
   useEffect(() => {
@@ -69,7 +91,7 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
     const sMin = parseHHMM(start);
     const eMin = parseHHMM(end);
     if (sMin == null || eMin == null) {
-      setError("Use HH:MM.");
+      setError("Try 9:00 am or 13:00.");
       return;
     }
     if (eMin <= sMin) {
@@ -82,8 +104,9 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
     const fd = new FormData();
     fd.set("title", trimmed);
     fd.set("date", date);
-    fd.set("startTime", start);
-    fd.set("endTime", end);
+    // Server action wants 24h HH:MM regardless of what the user typed.
+    fd.set("startTime", fmtHHMM(sMin));
+    fd.set("endTime", fmtHHMM(eMin));
     fd.set("labels", labels.join(","));
     const res = await addTaskAction(null, fd);
     setPending(false);
@@ -140,7 +163,7 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
           onChange={(e) => setStart(e.target.value)}
           onBlur={() => {
             const v = parseHHMM(start);
-            if (v != null) setStart(fmtHHMM(v));
+            if (v != null) setStart(fmtClock(v));
           }}
           aria-label="Start time"
           disabled={pending}
@@ -152,7 +175,7 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
           onChange={(e) => setEnd(e.target.value)}
           onBlur={() => {
             const v = parseHHMM(end);
-            if (v != null) setEnd(fmtHHMM(v));
+            if (v != null) setEnd(fmtClock(v));
           }}
           aria-label="End time"
           disabled={pending}

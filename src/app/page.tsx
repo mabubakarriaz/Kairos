@@ -8,9 +8,11 @@ import { getCheckpointsForDate } from "@/server/checkpoints";
 import { getRecentTags } from "@/server/tasks";
 import {
   addDays,
+  computeDayStats,
   dayWindow,
   fiveDayDates,
   fiveDayWindow,
+  fmtDuration,
   mondayOf,
   normalizeDate,
   todayInTz,
@@ -138,6 +140,7 @@ async function DayView({
   return (
     <>
       <LoadErrorNotice errors={errors} />
+      <DayStatsLine blocks={blocks} dayStartUtc={startUtc} isPast={isPast} />
       <DayColumn
         date={date}
         dayStartUtc={startUtc}
@@ -151,6 +154,67 @@ async function DayView({
         recentTags={recentTags}
       />
     </>
+  );
+}
+
+/**
+ * A single typographic line sitting between the date subtitle and the day grid:
+ *
+ *   4h 30m booked · 19h 30m open   work 2h · home 1h 30m · study 1h
+ *
+ * No box, no border, no tile. The line is suppressed when nothing is booked
+ * (an empty day is signalled by the grid itself). Past days omit "open" — the
+ * day is closed; open time is no longer actionable. The per-label segment is
+ * capped at 4 entries with `+N` overflow so a heavily-tagged day stays one line.
+ */
+function DayStatsLine({
+  blocks,
+  dayStartUtc,
+  isPast,
+}: {
+  blocks: ScheduledBlock[];
+  dayStartUtc: string;
+  isPast: boolean;
+}) {
+  const stats = computeDayStats(blocks, dayStartUtc);
+  if (stats.bookedMin === 0) return null;
+
+  const TOP = 4;
+  const topLabels = stats.byLabel.slice(0, TOP);
+  const overflow = Math.max(0, stats.byLabel.length - TOP);
+
+  return (
+    <p className="day-stats num" aria-label="Day allocation">
+      <span>
+        <span className="day-stats-amount">{fmtDuration(stats.bookedMin)}</span>{" "}
+        <span className="day-stats-label">booked</span>
+      </span>
+      {!isPast && (
+        <>
+          <span className="day-stats-sep" aria-hidden="true">·</span>
+          <span>
+            <span className="day-stats-amount">{fmtDuration(stats.openMin)}</span>{" "}
+            <span className="day-stats-label">open</span>
+          </span>
+        </>
+      )}
+      {topLabels.length > 0 && (
+        <span className="day-stats-divider" aria-hidden="true" />
+      )}
+      {topLabels.map((entry, i) => (
+        <span key={entry.label}>
+          {i > 0 && <span className="day-stats-sep mr-2" aria-hidden="true">·</span>}
+          <span className="day-stats-tag">#{entry.label}</span>{" "}
+          <span className="day-stats-amount">{fmtDuration(entry.minutes)}</span>
+        </span>
+      ))}
+      {overflow > 0 && (
+        <>
+          <span className="day-stats-sep" aria-hidden="true">·</span>
+          <span className="day-stats-label">+{overflow} more</span>
+        </>
+      )}
+    </p>
   );
 }
 

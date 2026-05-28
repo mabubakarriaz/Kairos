@@ -340,22 +340,55 @@
     letter-spacing: 0.01em;
   }
 
-  /* ── Now-line — hairline + tiny dot in the gutter + tiny mono timestamp. */
-  .now-line {
-    @apply pointer-events-none absolute left-12 right-1 z-20;
-    height: 1px;
-    background: rgb(var(--now));
-  }
-  .now-line::before {
-    content: "";
-    @apply absolute -left-1.5 h-1.5 w-1.5 rounded-full;
-    top: -3px;
-    background: rgb(var(--now));
-  }
+  /* ── Now mark — gutter-only. The full-width hairline that used to cross the
+     grid is gone; what remains is a single tabular-mono timestamp tucked into
+     the hour gutter at the current minute, with a small ember dot to its right.
+     "Where am I in the day right now" is answered in the gutter, never on the
+     schedule. The active block carries its own ember tells (block-active fill
+     + NOW glyph + "X left" tail). */
   .now-label {
-    @apply absolute left-0 w-12 -translate-y-1/2 pr-3 text-right text-[10px] font-semibold;
+    @apply pointer-events-none absolute left-0 w-12 -translate-y-1/2 pr-3 text-right text-[10px] font-semibold;
     color: rgb(var(--now));
     letter-spacing: 0.02em;
+    z-index: 20;
+  }
+  .now-label::after {
+    content: "";
+    @apply absolute h-1.5 w-1.5 rounded-full;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgb(var(--now));
+  }
+
+  /* ── Active block — the one the current minute is inside. A chromatic-only
+     lift (block-strong fill, no shadow, no border) plus a tiny "NOW" glyph
+     pinned at the top-right corner. The block becomes its own now-mark.
+     Ember is reserved for: this glyph, the "X left" tail (block-time-tail
+     [data-active]), and the gutter now-label — three channels of one fact. */
+  .block-active {
+    background-color: rgb(var(--block-strong));
+    /* A faint ember inset ring marks the block as "now is inside this one"
+       at rest — distinguishing it from a hovered block (also block-strong fill).
+       Same shape vocabulary as the editing-ring, retuned in --now at low opacity. */
+    box-shadow: 0 0 0 1px rgb(var(--now) / 0.32) inset;
+  }
+  .block-active:hover {
+    background-color: rgb(var(--block-strong));
+    box-shadow: 0 0 0 1px rgb(var(--now) / 0.45) inset;
+  }
+  .block-now-glyph {
+    @apply pointer-events-none absolute right-2 top-1.5 text-[9px] font-semibold uppercase leading-none;
+    color: rgb(var(--now));
+    letter-spacing: 0.18em;
+    transition: opacity 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* Hover or focus brings the delete X into the same corner — fade the glyph
+     so the two affordances don't stack. Editing replaces the corner entirely. */
+  .block:hover .block-now-glyph,
+  .block:focus-within .block-now-glyph,
+  .block-editing .block-now-glyph {
+    opacity: 0;
   }
 
   /* ── Checkpoints — scalar day-dividers. A 1px solid hairline across the column,
@@ -481,7 +514,7 @@
     letter-spacing: 0.12em;
   }
   .checkpoint-editor-time {
-    @apply w-[58px] bg-transparent text-right text-[11px] leading-none outline-none;
+    @apply w-[72px] bg-transparent text-right text-[11px] leading-none outline-none;
     color: rgb(var(--text-muted));
     font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
     font-variant-numeric: tabular-nums;
@@ -543,7 +576,7 @@
     font-weight: 500;
   }
   .composer-time-input {
-    @apply w-[58px] bg-transparent text-[11px] outline-none;
+    @apply w-[72px] bg-transparent text-[11px] outline-none;
     color: rgb(var(--text-muted));
     font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
     font-variant-numeric: tabular-nums;
@@ -624,11 +657,30 @@
     border-right: 1px solid rgb(var(--border));
   }
   .week-col-header {
-    @apply flex items-baseline justify-between gap-2 px-3 py-2;
+    @apply flex flex-col gap-1.5 px-3 py-2;
     border-right: 1px solid rgb(var(--border));
+  }
+  .week-col-header-row {
+    @apply flex items-baseline justify-between gap-2;
   }
   .week-col-header:last-child {
     border-right: 0;
+  }
+  /* Per-column booked total — a single mono numeral under the day-of-week + date.
+     Empty days show a centered `·` so the column header keeps its vertical rhythm. */
+  .week-col-stat {
+    @apply text-[10px] leading-none text-ink-faint;
+    font-feature-settings: "tnum", "ss01";
+    letter-spacing: 0.02em;
+  }
+  .week-col-header[data-today="true"] .week-col-stat {
+    color: rgb(var(--text-muted));
+  }
+  .week-col-header[data-past="true"] .week-col-stat {
+    color: rgb(var(--text-faint) / 0.65);
+  }
+  .week-col-stat-empty {
+    color: rgb(var(--text-faint) / 0.45);
   }
   .week-col-header[data-today="true"] {
     background-color: rgb(var(--accent) / 0.06);
@@ -706,15 +758,6 @@
   .week-col .block-resize {
     left: 6px;
     right: 22px;
-  }
-  .week-col .now-line {
-    left: 0;
-    right: 0;
-  }
-  /* The line + the gutter timestamp carry the signal; the gutter dot would
-     either crowd the column edge or protrude into the neighbor. Hide it. */
-  .week-col .now-line::before {
-    display: none;
   }
   /* Empty-future-day whisper: a single thin line inside the column. */
   .week-col-empty {
@@ -818,6 +861,33 @@
   }
   .composer-recent-pill[disabled] {
     @apply opacity-50;
+  }
+
+  /* ── Day-stats — a single typographic line that sits between the date subtitle
+     and the day grid. Not a dashboard tile, not a header zone — a quiet mono
+     row of totals and per-label allocations. Hidden when there's nothing to say. */
+  .day-stats {
+    @apply -mt-3 mb-5 flex flex-wrap items-baseline gap-x-2 gap-y-1 px-1 text-[11px] leading-none;
+    color: rgb(var(--text-faint));
+    font-feature-settings: "tnum", "ss01";
+    letter-spacing: 0.02em;
+  }
+  .day-stats-amount {
+    color: rgb(var(--text));
+    font-weight: 500;
+  }
+  .day-stats-label {
+    color: rgb(var(--text-muted));
+  }
+  .day-stats-sep {
+    color: rgb(var(--text-faint) / 0.55);
+  }
+  .day-stats-divider {
+    @apply mx-1 inline-block h-3 w-px align-middle;
+    background-color: rgb(var(--border));
+  }
+  .day-stats-tag {
+    color: rgb(var(--accent-strong) / 0.7);
   }
 
   /* ── Status-line layout for the filter ────────────────────────────────────── */

@@ -7,8 +7,10 @@ import {
   DAY_MINUTES,
   PX_PER_MIN,
   blockTimeMeta,
+  fmtClock,
+  fmtCountdown,
   fmtDuration,
-  fmtHHMM,
+  fmtHourLabel,
   minutesFromDayStart,
   snapMinutes,
 } from "@/lib/time";
@@ -94,18 +96,32 @@ export function DayColumn({
     return () => clearInterval(id);
   }, [isToday, dayStartMs]);
 
-  // First-paint scroll: on today, anchor so the now-line sits 60 minutes below
-  // the scroll top (1 hour of context above, the rest of the day below).
-  // Compute "now" synchronously — the tick's setState hasn't run yet on mount.
+  // First-paint scroll. On today, if a block is currently in flight, center the
+  // viewport on it — the user lands on the task that's happening right now.
+  // Otherwise anchor 60 minutes above the current minute. Past/future days fall
+  // back to a neutral 6am anchor.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    const viewport = el.clientHeight;
     let targetMin: number;
     if (isToday) {
       const synchronousNow = (Date.now() - dayStartMs) / 60_000;
+      const active = blocks.find((b) => {
+        const s = minutesFromDayStart(b.startUtc, dayStartUtc);
+        const e = minutesFromDayStart(b.endUtc, dayStartUtc);
+        return synchronousNow >= s && synchronousNow < e;
+      });
+      if (active) {
+        const s = minutesFromDayStart(active.startUtc, dayStartUtc);
+        const e = minutesFromDayStart(active.endUtc, dayStartUtc);
+        const centerPx = ((s + e) / 2) * PX_PER_MIN;
+        el.scrollTop = Math.max(0, centerPx - viewport / 2);
+        return;
+      }
       targetMin = Math.max(0, synchronousNow - 60);
     } else {
-      targetMin = 6 * 60; // neutral pre-dawn anchor for past/future days
+      targetMin = 6 * 60;
     }
     el.scrollTop = targetMin * PX_PER_MIN;
     // run once on mount
@@ -393,10 +409,10 @@ export function DayColumn({
           className={`day-grid ${drag ? "grid-dragging" : ""}`}
           style={{ height: GRID_HEIGHT }}
         >
-          {/* Hour labels */}
+          {/* Hour labels — 12h compact form: "12a", "9a", "12p", "11p". */}
           {HOURS.map((h) => (
             <div key={h} className="hour-label" style={{ top: h * HOUR_PX }}>
-              {String(h).padStart(2, "0")}
+              {fmtHourLabel(h)}
             </div>
           ))}
 
@@ -409,13 +425,14 @@ export function DayColumn({
             />
           )}
 
-          {/* Checkpoints — scalar day-dividers. The line + tag sit at z-18 so
-              they stay visible (and clickable) over blocks at rest; block drag
-              (z-30) and the now-line (z-20) still draw over them. Past days
-              are display-only. */}
+          {/* Checkpoints — scalar day-dividers. Past days are display-only.
+              On today, a future checkpoint carries a faint "in Xh Ym" trailer
+              that disappears the moment now ≥ time. */}
           {checkpoints.map((c) => {
             if (cpEdit?.mode === "edit" && cpEdit.id === c.id) return null;
             const topMin = checkpointTopMin(c);
+            const countdown =
+              isToday && nowMin != null ? fmtCountdown(topMin - nowMin) : null;
             return (
               <div
                 key={c.id}
@@ -438,12 +455,18 @@ export function DayColumn({
                       topMin,
                     });
                   }}
-                  aria-label={`Edit checkpoint ${c.label} at ${c.at}`}
+                  aria-label={`Edit checkpoint ${c.label} at ${fmtClock(topMin)}`}
                   disabled={isPast}
                 >
-                  <span className="checkpoint-tag-time num">{c.at}</span>
+                  <span className="checkpoint-tag-time num">{fmtClock(topMin)}</span>
                   <span className="checkpoint-tag-sep" aria-hidden="true">·</span>
                   <span className="checkpoint-tag-label">{c.label}</span>
+                  {countdown && (
+                    <>
+                      <span className="checkpoint-tag-sep" aria-hidden="true">·</span>
+                      <span className="checkpoint-tag-time num">{countdown}</span>
+                    </>
+                  )}
                 </button>
               </div>
             );
@@ -465,7 +488,7 @@ export function DayColumn({
               >
                 {height >= 22 && (
                   <span className="freeslot-label">
-                    {fmtHHMM(topMin)} · {fmtDuration(s.minutes)} free
+                    {fmtClock(topMin)} · {fmtDuration(s.minutes)} free
                   </span>
                 )}
               </div>
@@ -504,6 +527,8 @@ export function DayColumn({
             const movable = b.source === "kairos" && !isPast;
             const isEditing = editingId === b.id;
             const filteredOut = !matchesLabelFilter(b.tags, filterLabels);
+            const isActive =
+              isToday && nowMin != null && nowMin >= topMin && nowMin < topMin + dur;
 
             const cls = [
               "block",
@@ -513,6 +538,7 @@ export function DayColumn({
               isEditing ? "block-editing" : "",
               pendingId === b.id ? "block-pending" : "",
               filteredOut ? "block-filtered-out" : "",
+              isActive ? "block-active" : "",
               isPast ? "opacity-75" : "",
             ]
               .filter(Boolean)
@@ -525,6 +551,11 @@ export function DayColumn({
                 style={{ top: topMin * PX_PER_MIN, height }}
                 onPointerDown={(e) => startDrag(e, b)}
               >
+                {isActive && !isEditing && (
+                  <span className="block-now-glyph" aria-label="Now">
+                    now
+                  </span>
+                )}
                 {movable && !isEditing && (
                   <button
                     type="button"
@@ -610,14 +641,13 @@ export function DayColumn({
             />
           )}
 
-          {/* Now-line + gutter label */}
+          {/* Gutter now-mark — a small ember dot + tabular-mono timestamp at the
+              current minute. The full-width hairline that used to cross the grid
+              is gone; the active block carries the on-grid ember tells instead. */}
           {nowMin !== null && nowMin >= 0 && nowMin <= DAY_MINUTES && (
-            <>
-              <div className="now-label" style={{ top: nowMin * PX_PER_MIN }}>
-                {fmtHHMM(nowMin)}
-              </div>
-              <div className="now-line" style={{ top: nowMin * PX_PER_MIN }} />
-            </>
+            <div className="now-label" style={{ top: nowMin * PX_PER_MIN }}>
+              {fmtClock(nowMin)}
+            </div>
           )}
         </div>
       </div>
@@ -687,7 +717,7 @@ function StatusLeft({
       <span className="free-mark" aria-hidden="true" />
       <span className="text-ink-muted">next free</span>
       <span className="num text-ink">
-        {fmtHHMM(nextFree.topMin)}
+        {fmtClock(nextFree.topMin)}
         <span className="text-ink-faint"> · </span>
         {fmtDuration(nextFree.durMin)}
       </span>
@@ -714,7 +744,7 @@ function BlockTimeLine({
     <div className="block-time">
       {meta.range}
       <span className="block-time-sep">{" · "}</span>
-      <span className="block-time-tail" data-active={meta.active || undefined}>
+      <span className="block-time-tail" data-active={meta.state === "active" || undefined}>
         {meta.tail}
       </span>
     </div>

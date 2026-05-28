@@ -7,8 +7,11 @@ import {
   DAY_MINUTES,
   PX_PER_MIN,
   blockTimeMeta,
+  computeDayStats,
+  fmtClock,
+  fmtCountdown,
   fmtDuration,
-  fmtHHMM,
+  fmtHourLabel,
   minutesFromDayStart,
   snapMinutes,
 } from "@/lib/time";
@@ -100,10 +103,25 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    const viewport = el.clientHeight;
     let targetMin: number;
     if (todayIdx >= 0) {
       const dayStartMs = new Date(days[todayIdx].dayStartUtc).getTime();
       const synchronousNow = (Date.now() - dayStartMs) / 60_000;
+      const todayBlocks = days[todayIdx].blocks;
+      const dayStartUtc = days[todayIdx].dayStartUtc;
+      const active = todayBlocks.find((b) => {
+        const s = minutesFromDayStart(b.startUtc, dayStartUtc);
+        const e = minutesFromDayStart(b.endUtc, dayStartUtc);
+        return synchronousNow >= s && synchronousNow < e;
+      });
+      if (active) {
+        const s = minutesFromDayStart(active.startUtc, dayStartUtc);
+        const e = minutesFromDayStart(active.endUtc, dayStartUtc);
+        const centerPx = ((s + e) / 2) * PX_PER_MIN;
+        el.scrollTop = Math.max(0, centerPx - viewport / 2);
+        return;
+      }
       targetMin = Math.max(0, synchronousNow - 60);
     } else {
       targetMin = 6 * 60;
@@ -452,6 +470,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
             {days.map((d, i) => {
               const dt = new Date(`${d.date}T00:00:00.000Z`);
               const isTodayCol = d.date === today;
+              const stats = computeDayStats(d.blocks, d.dayStartUtc);
               return (
                 <div
                   key={d.date}
@@ -459,10 +478,21 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                   data-today={isTodayCol || undefined}
                   data-past={isPastByCol[i] || undefined}
                 >
-                  <span className="week-col-day">{weekdayShortFmt.format(dt)}</span>
-                  <span className="week-col-date num">
-                    {String(dt.getUTCDate()).padStart(2, "0")}
-                  </span>
+                  <div className="week-col-header-row">
+                    <span className="week-col-day">{weekdayShortFmt.format(dt)}</span>
+                    <span className="week-col-date num">
+                      {String(dt.getUTCDate()).padStart(2, "0")}
+                    </span>
+                  </div>
+                  {stats.bookedMin > 0 ? (
+                    <span className="week-col-stat num">
+                      {fmtDuration(stats.bookedMin)} booked
+                    </span>
+                  ) : (
+                    <span className="week-col-stat week-col-stat-empty" aria-hidden="true">
+                      ·
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -471,7 +501,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
           <div className="week-canvas" style={{ height: GRID_HEIGHT }}>
             {HOURS.map((h) => (
               <div key={h} className="hour-label" style={{ top: h * HOUR_PX }}>
-                {String(h).padStart(2, "0")}
+                {fmtHourLabel(h)}
               </div>
             ))}
 
@@ -510,21 +540,22 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                         Past days render dimmer via data-past. */}
                     {d.checkpoints.map((cp) => {
                       const cpTop = checkpointTopMin(cp);
+                      const cpClock = fmtClock(cpTop);
                       return (
                         <div
                           key={cp.id}
                           className="checkpoint"
                           data-past={past || undefined}
                           style={{ top: cpTop * PX_PER_MIN }}
-                          aria-label={`${cp.label} at ${cp.at}`}
-                          title={`${cp.label} · ${cp.at}`}
+                          aria-label={`${cp.label} at ${cpClock}`}
+                          title={`${cp.label} · ${cpClock}`}
                         >
                           <span
                             className="checkpoint-tag"
                             // Tag is non-interactive in week view; visible time only.
                             aria-hidden="true"
                           >
-                            <span className="checkpoint-tag-time num">{cp.at}</span>
+                            <span className="checkpoint-tag-time num">{cpClock}</span>
                           </span>
                         </div>
                       );
@@ -542,7 +573,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                         >
                           {height >= 22 && (
                             <span className="freeslot-label">
-                              {fmtHHMM(topMin)} · {fmtDuration(s.minutes)}
+                              {fmtClock(topMin)} · {fmtDuration(s.minutes)}
                             </span>
                           )}
                         </div>
@@ -563,6 +594,11 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                       const movable = b.source === "kairos" && !past;
                       const isEditing = editingId === b.id;
                       const filteredOut = !matchesLabelFilter(b.tags, filterLabels);
+                      const isActive =
+                        isTodayCol &&
+                        nowMin != null &&
+                        nowMin >= topMin &&
+                        nowMin < topMin + dur;
 
                       const cls = [
                         "block",
@@ -572,6 +608,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                         isEditing ? "block-editing" : "",
                         pendingId === b.id ? "block-pending" : "",
                         filteredOut ? "block-filtered-out" : "",
+                        isActive ? "block-active" : "",
                         past ? "opacity-75" : "",
                       ]
                         .filter(Boolean)
@@ -584,7 +621,14 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                           style={{ top: topMin * PX_PER_MIN, height }}
                           onPointerDown={(e) => startDrag(e, b, i)}
                         >
-                          {b.tags.length > 0 && !isEditing && <BlockTagDots tags={b.tags} />}
+                          {isActive && !isEditing && (
+                            <span className="block-now-glyph" aria-label="Now">
+                              now
+                            </span>
+                          )}
+                          {b.tags.length > 0 && !isEditing && !isActive && (
+                            <BlockTagDots tags={b.tags} />
+                          )}
                           {movable && !isEditing && (
                             <button
                               type="button"
@@ -667,9 +711,6 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                       />
                     )}
 
-                    {isTodayCol && nowMin !== null && nowMin >= 0 && nowMin <= DAY_MINUTES && (
-                      <div className="now-line" style={{ top: nowMin * PX_PER_MIN }} />
-                    )}
                   </div>
                 );
               })}
@@ -677,7 +718,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
 
             {todayIdx >= 0 && nowMin !== null && nowMin >= 0 && nowMin <= DAY_MINUTES && (
               <div className="now-label" style={{ top: nowMin * PX_PER_MIN }}>
-                {fmtHHMM(nowMin)}
+                {fmtClock(nowMin)}
               </div>
             )}
           </div>
@@ -737,7 +778,7 @@ function BlockTimeLine({
     <div className="block-time">
       {meta.range}
       <span className="block-time-sep">{" · "}</span>
-      <span className="block-time-tail" data-active={meta.active || undefined}>
+      <span className="block-time-tail" data-active={meta.state === "active" || undefined}>
         {meta.tail}
       </span>
     </div>
@@ -823,7 +864,7 @@ function StatusLeft({
             <span className="text-ink-faint"> · </span>
           </>
         )}
-        {fmtHHMM(nextFree.topMin)}
+        {fmtClock(nextFree.topMin)}
         <span className="text-ink-faint"> · </span>
         {fmtDuration(nextFree.durMin)}
       </span>

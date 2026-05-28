@@ -40,14 +40,14 @@ function toHex(buf: ArrayBuffer): string {
   return out;
 }
 
-function fromHex(hex: string): ArrayBuffer | null {
+function fromHex(hex: string): Uint8Array<ArrayBuffer> | null {
   if (!/^[0-9a-fA-F]+$/.test(hex) || hex.length % 2 !== 0) return null;
   const buf = new ArrayBuffer(hex.length / 2);
   const view = new Uint8Array(buf);
   for (let i = 0; i < view.length; i++) {
     view[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   }
-  return buf;
+  return view;
 }
 
 export async function signSession(expiresAtMs: number): Promise<string | null> {

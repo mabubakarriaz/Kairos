@@ -72,7 +72,9 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
   const jar = await cookies();
   jar.set(AUTH_COOKIE, session.value, {
     httpOnly: true,
-    secure: true,
+    // Secure cookies are silently dropped over HTTP, so opt out for local dev
+    // (HTTP) while keeping the flag on for production (Vercel, always HTTPS).
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     expires: session.expiresAt,

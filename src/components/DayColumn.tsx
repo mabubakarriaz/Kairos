@@ -13,8 +13,9 @@ import {
   snapMinutes,
 } from "@/lib/time";
 import { matchesLabelFilter } from "@/lib/labels";
-import type { FreeSlot, ScheduledBlock } from "@/lib/types";
+import type { Checkpoint, FreeSlot, ScheduledBlock } from "@/lib/types";
 import { InlineComposer } from "./InlineComposer";
+import { CheckpointEditor } from "./CheckpointEditor";
 import { LabelFilter } from "./LabelFilter";
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
@@ -27,6 +28,7 @@ interface Props {
   dayStartUtc: string;
   blocks: ScheduledBlock[];
   freeSlots: FreeSlot[];
+  checkpoints: Checkpoint[];
   isToday: boolean;
   isPast: boolean;
   filterLabels: string[];
@@ -42,11 +44,26 @@ type DragState = {
 } | null;
 type ComposerState = { topMin: number; durMin: number } | null;
 
+/**
+ * Checkpoint editor state — either creating a new one at `topMin`, or editing
+ * an existing checkpoint at its current resolved time. `null` = closed.
+ */
+type CheckpointEditState =
+  | { mode: "new"; topMin: number }
+  | { mode: "edit"; id: string; label: string; at: string; topMin: number }
+  | null;
+
+function checkpointTopMin(c: Checkpoint): number {
+  const [hh, mm] = c.at.split(":").map(Number);
+  return hh * 60 + mm;
+}
+
 export function DayColumn({
   date,
   dayStartUtc,
   blocks,
   freeSlots,
+  checkpoints,
   isToday,
   isPast,
   filterLabels,
@@ -61,6 +78,7 @@ export function DayColumn({
   const [nowMin, setNowMin] = useState<number | null>(null);
   const [composer, setComposer] = useState<ComposerState>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [cpEdit, setCpEdit] = useState<CheckpointEditState>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -148,22 +166,29 @@ export function DayColumn({
     spawnComposerAt(clickedMin);
   }
 
-  // 'n' keyboard shortcut → next free slot. Esc closes composer (handled inside).
+  // 'n' = next-free task composer · 'c' = new checkpoint editor.
+  // Both Esc-close, and both ignore key events while the user is typing.
   useEffect(() => {
     if (isPast) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key !== "n" && e.key !== "N") return;
       const t = e.target as HTMLElement | null;
-      // Skip when user is typing somewhere.
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      e.preventDefault();
-      const target = pickComposerTarget();
-      setComposer(target);
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setCpEdit(null);
+        const target = pickComposerTarget();
+        setComposer(target);
+      } else if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        setComposer(null);
+        const seed = isToday && nowMin != null ? Math.max(0, nowMin) : 9 * 60;
+        setCpEdit({ mode: "new", topMin: snapMinutes(seed) });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [freeSlots, blocksByStart, dayStartUtc, nowMin, isPast]);
+  }, [freeSlots, blocksByStart, dayStartUtc, nowMin, isPast, isToday]);
 
   function pickComposerTarget(): ComposerState {
     // Today: first free slot ending after now. Else: first free slot of the day.
@@ -384,6 +409,46 @@ export function DayColumn({
             />
           )}
 
+          {/* Checkpoints — scalar day-dividers. The line + tag sit at z-18 so
+              they stay visible (and clickable) over blocks at rest; block drag
+              (z-30) and the now-line (z-20) still draw over them. Past days
+              are display-only. */}
+          {checkpoints.map((c) => {
+            if (cpEdit?.mode === "edit" && cpEdit.id === c.id) return null;
+            const topMin = checkpointTopMin(c);
+            return (
+              <div
+                key={c.id}
+                className="checkpoint"
+                data-past={isPast || undefined}
+                style={{ top: topMin * PX_PER_MIN }}
+              >
+                <span className="checkpoint-tick" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="checkpoint-tag"
+                  onClick={() => {
+                    if (isPast) return;
+                    setComposer(null);
+                    setCpEdit({
+                      mode: "edit",
+                      id: c.id,
+                      label: c.label,
+                      at: c.at,
+                      topMin,
+                    });
+                  }}
+                  aria-label={`Edit checkpoint ${c.label} at ${c.at}`}
+                  disabled={isPast}
+                >
+                  <span className="checkpoint-tag-time num">{c.at}</span>
+                  <span className="checkpoint-tag-sep" aria-hidden="true">·</span>
+                  <span className="checkpoint-tag-label">{c.label}</span>
+                </button>
+              </div>
+            );
+          })}
+
           {/* Free-slot ghosts: top hairline + tiny timestamp at top-left */}
           {visibleFreeSlots.map((s, i) => {
             const topMin = minutesFromDayStart(s.startUtc, dayStartUtc);
@@ -418,7 +483,8 @@ export function DayColumn({
             >
               <p className="empty-headline">An empty page.</p>
               <p className="empty-sub">
-                Click anywhere to drop a block · or press <kbd>n</kbd>
+                Click anywhere to drop a block · press <kbd>n</kbd> for next free ·{" "}
+                <kbd>c</kbd> for a checkpoint
               </p>
             </div>
           )}
@@ -518,6 +584,29 @@ export function DayColumn({
               recentTags={recentTags}
               onClose={() => setComposer(null)}
               onSubmitted={() => setComposer(null)}
+            />
+          )}
+
+          {/* Checkpoint editor (new or edit). Overlays the line at its y. */}
+          {cpEdit && cpEdit.mode === "new" && (
+            <CheckpointEditor
+              mode="new"
+              date={date}
+              topMin={cpEdit.topMin}
+              onClose={() => setCpEdit(null)}
+              onCommitted={() => setCpEdit(null)}
+            />
+          )}
+          {cpEdit && cpEdit.mode === "edit" && (
+            <CheckpointEditor
+              mode="edit"
+              date={date}
+              id={cpEdit.id}
+              label={cpEdit.label}
+              at={cpEdit.at}
+              topMin={cpEdit.topMin}
+              onClose={() => setCpEdit(null)}
+              onCommitted={() => setCpEdit(null)}
             />
           )}
 

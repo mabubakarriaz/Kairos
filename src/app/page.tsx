@@ -4,6 +4,7 @@ import { DayColumn } from "@/components/DayColumn";
 import { WeekColumns, type WeekDay } from "@/components/WeekColumns";
 import { getBlocksInRange } from "@/server/schedule";
 import { getFreeSlots } from "@/server/freeslots";
+import { getCheckpointsForDate } from "@/server/checkpoints";
 import { getRecentTags } from "@/server/tasks";
 import {
   addDays,
@@ -23,7 +24,7 @@ import {
   isValidTimeZone,
   zonedDayStartUtc,
 } from "@/lib/timezone";
-import type { FreeSlot, ScheduledBlock } from "@/lib/types";
+import type { Checkpoint, FreeSlot, ScheduledBlock } from "@/lib/types";
 
 // Always render on request — the page reads ?date / ?view / ?labels + cookie + live DB data.
 export const dynamic = "force-dynamic";
@@ -115,20 +116,24 @@ async function DayView({
 
   let blocks: ScheduledBlock[] = [];
   let freeSlots: FreeSlot[] = [];
+  let checkpoints: Checkpoint[] = [];
   let recentTags: string[] = [];
 
-  const [blocksRes, freeRes, recentRes] = await Promise.allSettled([
+  const [blocksRes, freeRes, cpRes, recentRes] = await Promise.allSettled([
     getBlocksInRange(startUtc, endUtc),
     getFreeSlots(startUtc, endUtc, 5),
+    getCheckpointsForDate(date),
     getRecentTags(),
   ]);
   if (blocksRes.status === "fulfilled") blocks = blocksRes.value;
   if (freeRes.status === "fulfilled") freeSlots = freeRes.value;
+  if (cpRes.status === "fulfilled") checkpoints = cpRes.value;
   if (recentRes.status === "fulfilled") recentTags = recentRes.value;
 
   const errors: string[] = [];
   if (blocksRes.status === "rejected") errors.push(`schedule · ${errMsg(blocksRes.reason)}`);
   if (freeRes.status === "rejected") errors.push(`free slots · ${errMsg(freeRes.reason)}`);
+  if (cpRes.status === "rejected") errors.push(`checkpoints · ${errMsg(cpRes.reason)}`);
 
   return (
     <>
@@ -138,6 +143,7 @@ async function DayView({
         dayStartUtc={startUtc}
         blocks={blocks}
         freeSlots={freeSlots}
+        checkpoints={checkpoints}
         isToday={isToday}
         isPast={isPast}
         filterLabels={filterLabels}
@@ -171,9 +177,10 @@ async function MultiDayView({
     return { date: d, startUtc: start, endUtc: end };
   });
 
-  const [blocksRes, freeResults, recentRes] = await Promise.all([
+  const [blocksRes, freeResults, cpResults, recentRes] = await Promise.all([
     Promise.allSettled([getBlocksInRange(startUtc, endUtc)]).then((r) => r[0]),
     Promise.allSettled(dayWindows.map((w) => getFreeSlots(w.startUtc, w.endUtc, 5))),
+    Promise.allSettled(dayWindows.map((w) => getCheckpointsForDate(w.date))),
     Promise.allSettled([getRecentTags()]).then((r) => r[0]),
   ]);
 
@@ -189,11 +196,14 @@ async function MultiDayView({
     });
     const freeRes = freeResults[i];
     const freeSlots: FreeSlot[] = freeRes && freeRes.status === "fulfilled" ? freeRes.value : [];
+    const cpRes = cpResults[i];
+    const checkpoints: Checkpoint[] = cpRes && cpRes.status === "fulfilled" ? cpRes.value : [];
     return {
       date: w.date,
       dayStartUtc: w.startUtc,
       blocks: dayBlocks,
       freeSlots,
+      checkpoints,
     };
   });
 
@@ -201,6 +211,9 @@ async function MultiDayView({
   if (blocksRes.status === "rejected") errors.push(`schedule · ${errMsg(blocksRes.reason)}`);
   freeResults.forEach((r, i) => {
     if (r.status === "rejected") errors.push(`free slots ${dates[i]} · ${errMsg(r.reason)}`);
+  });
+  cpResults.forEach((r, i) => {
+    if (r.status === "rejected") errors.push(`checkpoints ${dates[i]} · ${errMsg(r.reason)}`);
   });
 
   return (

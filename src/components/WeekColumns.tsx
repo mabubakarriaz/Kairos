@@ -13,7 +13,7 @@ import {
   snapMinutes,
 } from "@/lib/time";
 import { matchesLabelFilter } from "@/lib/labels";
-import type { FreeSlot, ScheduledBlock } from "@/lib/types";
+import type { Checkpoint, FreeSlot, ScheduledBlock } from "@/lib/types";
 import { InlineComposer } from "./InlineComposer";
 import { LabelFilter } from "./LabelFilter";
 
@@ -29,6 +29,12 @@ export interface WeekDay {
   dayStartUtc: string;
   blocks: ScheduledBlock[];
   freeSlots: FreeSlot[];
+  checkpoints: Checkpoint[];
+}
+
+function checkpointTopMin(c: Checkpoint): number {
+  const [hh, mm] = c.at.split(":").map(Number);
+  return hh * 60 + mm;
 }
 
 interface Props {
@@ -498,6 +504,31 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                         role="presentation"
                       />
                     )}
+
+                    {/* Checkpoints — quiet display-only in week view. Tag shows
+                        the time only (label hidden via .week-col .checkpoint-tag-label).
+                        Past days render dimmer via data-past. */}
+                    {d.checkpoints.map((cp) => {
+                      const cpTop = checkpointTopMin(cp);
+                      return (
+                        <div
+                          key={cp.id}
+                          className="checkpoint"
+                          data-past={past || undefined}
+                          style={{ top: cpTop * PX_PER_MIN }}
+                          aria-label={`${cp.label} at ${cp.at}`}
+                          title={`${cp.label} · ${cp.at}`}
+                        >
+                          <span
+                            className="checkpoint-tag"
+                            // Tag is non-interactive in week view; visible time only.
+                            aria-hidden="true"
+                          >
+                            <span className="checkpoint-tag-time num">{cp.at}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
 
                     {visibleFreeSlots.map((s, idx) => {
                       const topMin = minutesFromDayStart(s.startUtc, dayStartUtc);

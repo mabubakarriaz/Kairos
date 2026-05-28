@@ -4,6 +4,11 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createTaskWithBlock } from "@/server/tasks";
 import { deleteBlock, renameBlock, rescheduleBlock } from "@/server/schedule";
+import {
+  createCheckpoint,
+  deleteCheckpoint,
+  updateCheckpoint,
+} from "@/server/checkpoints";
 import { isoAt } from "@/lib/time";
 import { parseLabelsInput } from "@/lib/labels";
 import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone } from "@/lib/timezone";
@@ -82,6 +87,75 @@ export async function deleteBlockAction(blockId: string): Promise<ActionResult> 
 
   const result = await deleteBlock(blockId);
   if (!result.ok) return { ok: false, error: result.error };
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+const CHECKPOINT_LABEL_MAX = 60;
+
+function normalizeCheckpointLabel(raw: string): { label: string; error?: string } {
+  const label = raw.trim().replace(/\s+/g, " ");
+  if (!label) return { label, error: "Label is required." };
+  if (label.length > CHECKPOINT_LABEL_MAX) {
+    return { label, error: "Label is too long." };
+  }
+  return { label };
+}
+
+/** Create a new checkpoint, effective from the given date forward. */
+export async function addCheckpointAction(input: {
+  label: string;
+  at: string;
+  date: string;
+}): Promise<ActionResult> {
+  const { label, error: labelErr } = normalizeCheckpointLabel(input.label);
+  if (labelErr) return { ok: false, error: labelErr };
+  if (!TIME.test(input.at)) return { ok: false, error: "Use HH:MM." };
+  if (!DATE.test(input.date)) return { ok: false, error: "Invalid date." };
+
+  const res = await createCheckpoint({ label, at: input.at, effectiveFrom: input.date });
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Edit a checkpoint from `date` onwards (this and all future occurrences). */
+export async function updateCheckpointAction(input: {
+  id: string;
+  label: string;
+  at: string;
+  date: string;
+}): Promise<ActionResult> {
+  if (!input.id) return { ok: false, error: "Missing checkpoint id." };
+  const { label, error: labelErr } = normalizeCheckpointLabel(input.label);
+  if (labelErr) return { ok: false, error: labelErr };
+  if (!TIME.test(input.at)) return { ok: false, error: "Use HH:MM." };
+  if (!DATE.test(input.date)) return { ok: false, error: "Invalid date." };
+
+  const res = await updateCheckpoint({
+    id: input.id,
+    label,
+    at: input.at,
+    effectiveFrom: input.date,
+  });
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Hide a checkpoint from `date` onwards (earlier days keep the historical line). */
+export async function deleteCheckpointAction(input: {
+  id: string;
+  date: string;
+}): Promise<ActionResult> {
+  if (!input.id) return { ok: false, error: "Missing checkpoint id." };
+  if (!DATE.test(input.date)) return { ok: false, error: "Invalid date." };
+
+  const res = await deleteCheckpoint({ id: input.id, effectiveFrom: input.date });
+  if (!res.ok) return { ok: false, error: res.error };
 
   revalidatePath("/");
   return { ok: true };

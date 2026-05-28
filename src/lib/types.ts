@@ -23,3 +23,17 @@ export interface DaySchedule {
   blocks: ScheduledBlock[];
   freeSlots: FreeSlot[];
 }
+
+/**
+ * A day-divider. Scalar: just a wall-clock time + a label. Renders as a thin
+ * horizontal line across the day grid. The model is effective-dated daily:
+ * the same checkpoint may carry different times on different dates (see
+ * `src/server/checkpoints.ts`). What the day view receives is already resolved
+ * to the active rule for that date.
+ */
+export interface Checkpoint {
+  id: string;
+  label: string;
+  /** Wall-clock time-of-day, "HH:MM" (24h). */
+  at: string;
+}

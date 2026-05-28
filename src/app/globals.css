@@ -358,6 +358,167 @@
     letter-spacing: 0.02em;
   }
 
+  /* ── Checkpoints — scalar day-dividers. A 1px solid hairline across the column,
+     a small horizontal tick in the gutter at the line's vertical center, and a
+     right-anchored label tag whose `surface` background masks the line behind the
+     text (the architectural-drawing convention: dimension lines get interrupted
+     by their label). Distinct from now-line (Ember) and free-slots (graphite-
+     dashed) — checkpoints sit in the warm-architectural-neutral channel.
+     Z-order: rendered before blocks in DOM so blocks visually take precedence;
+     the now-line still draws over them via its z-20. */
+  .checkpoint {
+    @apply pointer-events-none absolute left-12 right-1;
+    height: 1px;
+    z-index: 18;
+    background-color: rgb(var(--border-strong));
+    transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .checkpoint:hover,
+  .checkpoint:focus-within {
+    background-color: rgb(var(--text-faint));
+  }
+  /* Gutter tick — a 10px horizontal stroke at the line's vertical center.
+     Lives in the hour-gutter (left-0 to left-12), at left ~36–46px so it
+     doesn't crowd the hour labels (which are right-aligned with pr-3). */
+  .checkpoint-tick {
+    @apply pointer-events-none absolute h-px;
+    top: 0;
+    left: 36px;
+    width: 10px;
+    background-color: rgb(var(--text-faint));
+    transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .checkpoint:hover .checkpoint-tick,
+  .checkpoint:focus-within .checkpoint-tick {
+    background-color: rgb(var(--text-muted));
+  }
+  /* The label tag — sits at the right edge of the column on the line's center.
+     `surface` background masks the line behind the text without becoming a chip:
+     no border, no shadow, no padding beyond the few px needed to clear the line. */
+  .checkpoint-tag {
+    @apply absolute right-1 inline-flex -translate-y-1/2 items-center gap-2;
+    top: 0;
+    padding: 0 6px;
+    background-color: rgb(var(--surface));
+    color: rgb(var(--text-faint));
+    transition: color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    cursor: text;
+    pointer-events: auto;
+  }
+  .checkpoint:hover .checkpoint-tag,
+  .checkpoint:focus-within .checkpoint-tag {
+    color: rgb(var(--text));
+  }
+  .checkpoint-tag:focus-visible {
+    outline: none;
+    color: rgb(var(--text));
+  }
+  .checkpoint-tag-time {
+    @apply text-[10px] leading-none;
+    font-feature-settings: "tnum", "ss01";
+  }
+  .checkpoint-tag-sep {
+    @apply text-[10px] leading-none;
+    color: rgb(var(--text-faint) / 0.55);
+  }
+  .checkpoint-tag-label {
+    @apply text-[10px] font-medium uppercase leading-none;
+    letter-spacing: 0.12em;
+  }
+  /* Past-day rendering: dim a touch but still legible. Editing is disabled
+     in the parent. */
+  .checkpoint[data-past="true"] {
+    background-color: rgb(var(--border-strong) / 0.7);
+  }
+  .checkpoint[data-past="true"] .checkpoint-tag {
+    color: rgb(var(--text-faint) / 0.75);
+    cursor: default;
+  }
+  /* The delete ghost — invisible until the checkpoint is hovered or focused.
+     Mirrors the block-del affordance but warmed to Walnut so it doesn't read
+     as a destructive flash. */
+  .checkpoint-del {
+    @apply absolute inline-flex h-4 w-4 items-center justify-center rounded-sm opacity-0;
+    @apply transition-opacity duration-150;
+    right: 2px;
+    top: -8px;
+    color: rgb(var(--text-faint));
+    background-color: rgb(var(--surface));
+    pointer-events: auto;
+  }
+  .checkpoint-del:hover {
+    color: rgb(var(--now));
+  }
+  .checkpoint:hover .checkpoint-del,
+  .checkpoint:focus-within .checkpoint-del {
+    opacity: 1;
+  }
+  @media (hover: none) {
+    .checkpoint-del {
+      opacity: 1;
+    }
+  }
+
+  /* Inline checkpoint editor — overlays the line at its y position. The same
+     accent-ring "this is a focused edit zone" vocabulary as the InlineComposer,
+     compressed to a single row because a checkpoint has no duration field. */
+  .checkpoint-editor {
+    @apply absolute left-12 right-1 flex -translate-y-1/2 items-center gap-2 rounded-sm px-3 py-1.5;
+    top: 0;
+    background-color: rgb(var(--surface));
+    box-shadow:
+      0 0 0 1px rgb(var(--accent) / 0.55),
+      0 8px 22px -10px rgb(var(--shadow) / 0.22);
+    z-index: 38;
+  }
+  .checkpoint-editor-label {
+    @apply min-w-0 flex-1 bg-transparent text-[11px] font-medium uppercase leading-none outline-none;
+    color: rgb(var(--text));
+    letter-spacing: 0.12em;
+  }
+  .checkpoint-editor-label::placeholder {
+    color: rgb(var(--text-faint));
+    letter-spacing: 0.12em;
+  }
+  .checkpoint-editor-time {
+    @apply w-[58px] bg-transparent text-right text-[11px] leading-none outline-none;
+    color: rgb(var(--text-muted));
+    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .checkpoint-editor-time:focus {
+    color: rgb(var(--text));
+  }
+  .checkpoint-editor-meta {
+    @apply text-[10px] uppercase leading-none;
+    letter-spacing: 0.12em;
+    color: rgb(var(--text-faint));
+  }
+  .checkpoint-editor-error {
+    color: rgb(var(--now));
+  }
+
+  /* Week-view tuning — narrower columns, no room for the right-side tag, so
+     hide the label/time and lean on the line + hover tooltip. */
+  .week-col .checkpoint {
+    left: 0;
+    right: 0;
+  }
+  .week-col .checkpoint-tick {
+    display: none;
+  }
+  .week-col .checkpoint-tag {
+    right: 2px;
+    padding: 0 4px;
+    gap: 4px;
+  }
+  .week-col .checkpoint-tag-label {
+    display: none;
+  }
+  .week-col .checkpoint-tag-sep {
+    display: none;
+  }
+
   /* ── Inline composer — appears at the clicked slot. Replaces the old card form. */
   .composer {
     @apply absolute left-12 right-1 overflow-hidden rounded-md px-3 py-1.5;

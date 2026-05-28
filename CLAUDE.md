@@ -93,6 +93,30 @@ supabase db push   # apply supabase/migrations/*
 `next build` does **not** prerender `/` (`export const dynamic = "force-dynamic"`),
 so it never hits the DB at build time and needs no secrets.
 
+### Build & dev hygiene (Windows)
+
+- **`npm run typecheck` is the fast, reliable verification.** It catches the same
+  TypeScript errors as `next build` in seconds. Prefer it for routine checks.
+- **`npm run build` can hang on `.next/trace` (EPERM).** Windows holds file locks
+  on `.next/` when a previous dev server, build, or Vercel CLI is still bound to
+  the directory. Symptom: `uncaughtException [Error: EPERM: operation not permitted,
+  open '.next\trace']`, or the build sits silent forever.
+- **Reset before retrying a local build/dev:**
+
+  ```powershell
+  # Kill anything bound to :3000 (lingering dev server)
+  Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty OwningProcess -Unique |
+    ForEach-Object { Stop-Process -Id $_ -Force }
+
+  # Clear the stale build dir
+  Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
+  ```
+
+  Then re-run `npm run build` or `npm run dev`. **Don't wait on a stuck build —
+  kill it, clear, and retry.** Type-check coverage is what verifies the diff;
+  build verifies the bundle pipeline, not the diff.
+
 ## Gotchas
 
 - **PostgreSQL 14+ required** for multiranges (`tstzmultirange`) and the EXCLUDE/GIST
@@ -112,3 +136,4 @@ load every session — keep them short and update them when you learn something 
 @.claude/memory/deployment-live.md
 @.claude/memory/stack-migration-2026-05-27.md
 @.claude/memory/ui-redesign-direction.md
+@.claude/memory/build-vs-typecheck-windows.md

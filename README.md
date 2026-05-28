@@ -10,11 +10,19 @@ and lets you drag tasks around to reschedule them.
 ## Features
 
 - **Time-blocked day view** — tasks render as blocks on a vertical day timeline.
-- **Add a task with a time range** — it appears on the schedule immediately.
-- **Drag to reschedule** — grab a block and drop it on a new time (snaps to 15 min).
+  Each block shows its time range and duration (e.g. `10:00–11:30 · 1h 30m`),
+  and the duration swaps to a live `42m left` countdown when the now-line is
+  crossing it.
+- **Week view** — five days side-by-side; drag a block between columns to move
+  it to another day.
+- **Inline composer** — click any empty slot to drop a block right there, or
+  press `n` to open one at the next free slot.
+- **Drag to reschedule** — grab a block and drop it on a new time (snaps to 15 min);
+  drag the bottom edge to resize.
+- **Click a title to rename** — in-place edit, no dialog.
 - **No-overlap scheduling** — the database itself guarantees blocks can't collide.
-- **Free-slot finder** — the best open gaps in your day, computed in SQL; click one
-  to prefill the add-task form.
+- **Free-slot finder** — the best open gaps in your day, computed in SQL; the
+  current next-free slot is always one click (or keypress) away.
 - **Light / dark** — a polished theme toggle that remembers your choice.
 
 ## Tech stack

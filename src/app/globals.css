@@ -204,10 +204,21 @@
   .block-title-input {
     @apply block w-full min-w-0 bg-transparent text-[13px] font-semibold leading-tight outline-none;
     color: rgb(var(--accent-strong));
+    /* Pixel-parity with .block-title: inherit the parent's font + features so the
+       text doesn't shift or change shape when entering edit mode. Platform input
+       chrome (textfield appearance, default radii) is suppressed for the same reason. */
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.25;
     letter-spacing: -0.005em;
     padding: 0;
     margin: 0;
     border: 0;
+    border-radius: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    caret-color: rgb(var(--accent-strong));
   }
   .block-title-input::selection {
     background-color: rgb(var(--accent) / 0.35);
@@ -215,6 +226,14 @@
   .block-time {
     @apply mt-0.5 truncate text-[10px] leading-tight;
     color: rgb(var(--accent-strong) / 0.75);
+  }
+  .block-time-sep {
+    color: rgb(var(--accent-strong) / 0.45);
+  }
+  /* When the now-line is crossing the block, the "X left" tail carries the same
+     red-ochre as the now-line itself. Two channels, one fact. */
+  .block-time-tail[data-active] {
+    color: rgb(var(--now));
   }
   /* Edit mode — block keeps its amber wash; an accent ring marks the input. */
   .block-editing {

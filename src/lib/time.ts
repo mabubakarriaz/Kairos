@@ -85,3 +85,27 @@ export function fmtDuration(minutes: number): string {
   if (h) return `${h}h`;
   return `${m}m`;
 }
+
+/**
+ * Time-meta for a block: the time range, plus either the full duration or
+ * "X left" when the now-line is crossing the block (active === true).
+ * Caller passes `nowMin = null` when the now-line is irrelevant (not today).
+ */
+export function blockTimeMeta(args: {
+  startMin: number;
+  endMin: number;
+  nowMin: number | null;
+  startIso: string;
+  endIso: string;
+}): { range: string; tail: string; active: boolean } {
+  const range = fmtRange(args.startIso, args.endIso);
+  const active =
+    args.nowMin != null && args.nowMin >= args.startMin && args.nowMin < args.endMin;
+  if (active) {
+    // Round UP so a block with 30s remaining reads "1m left", not "0m left".
+    const remaining = Math.max(1, Math.ceil(args.endMin - (args.nowMin as number)));
+    return { range, tail: `${fmtDuration(remaining)} left`, active: true };
+  }
+  const dur = Math.max(0, args.endMin - args.startMin);
+  return { range, tail: fmtDuration(dur), active: false };
+}

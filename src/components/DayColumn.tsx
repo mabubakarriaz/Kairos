@@ -6,8 +6,8 @@ import { deleteBlockAction, renameBlockAction, rescheduleAction } from "@/app/ac
 import {
   DAY_MINUTES,
   PX_PER_MIN,
+  blockTimeMeta,
   fmtDuration,
-  fmtRange,
   minutesFromDayStart,
   snapMinutes,
 } from "@/lib/time";
@@ -460,9 +460,13 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
                 ) : (
                   <div className="block-title">{b.title}</div>
                 )}
-                <div className="block-time">
-                  {isDragging ? fmtRange(startIso, endIso) : fmtRange(b.startUtc, b.endUtc)}
-                </div>
+                <BlockTimeLine
+                  startMin={top}
+                  endMin={top + dur}
+                  startIso={isDragging ? startIso : b.startUtc}
+                  endIso={isDragging ? endIso : b.endUtc}
+                  nowMin={isToday ? nowMin : null}
+                />
                 {movable && !isEditing && (
                   <div
                     className="block-resize"
@@ -558,6 +562,31 @@ function StatusLeft({
         </span>
       )}
     </button>
+  );
+}
+
+function BlockTimeLine({
+  startMin,
+  endMin,
+  startIso,
+  endIso,
+  nowMin,
+}: {
+  startMin: number;
+  endMin: number;
+  startIso: string;
+  endIso: string;
+  nowMin: number | null;
+}) {
+  const meta = blockTimeMeta({ startMin, endMin, nowMin, startIso, endIso });
+  return (
+    <div className="block-time">
+      {meta.range}
+      <span className="block-time-sep">{" · "}</span>
+      <span className="block-time-tail" data-active={meta.active || undefined}>
+        {meta.tail}
+      </span>
+    </div>
   );
 }
 

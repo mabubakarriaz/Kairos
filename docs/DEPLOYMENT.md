@@ -40,6 +40,21 @@ build) — no deploy, no secrets.
 > project env vars (see [VERCEL_SETUP.md](VERCEL_SETUP.md)). GitHub holds only the
 > credentials needed to *push migrations* and *trigger a Vercel build*.
 
+### Login gate (also in Vercel)
+
+The single-user password gate lives entirely in app code; there is no third-party
+auth provider. Set these alongside the Supabase runtime vars in **Vercel** project
+env. The app is locked closed until both are present.
+
+| Vercel env var | What it is |
+|---|---|
+| `APP_PASSWORD` | The literal password that unlocks the app. Pick something long. |
+| `AUTH_SECRET` | HMAC key for the session cookie. Generate with `openssl rand -hex 32`. Rotating this value invalidates every existing session. |
+
+After 3 failed attempts from the same IP the gate locks that IP for 2 hours
+(tracked in the `auth_lockout` table — applied by the migration job). A
+successful login wipes the IP's lockout row.
+
 ## Turn off Vercel's own Git deploys
 
 So you don't deploy twice, disable Vercel's automatic Git deployments (Vercel

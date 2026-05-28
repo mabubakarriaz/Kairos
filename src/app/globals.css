@@ -20,8 +20,8 @@
     --border-strong: 203 213 225;
 
     --text: 17 24 39;
-    --text-muted: 100 116 139;
-    --text-faint: 148 163 184;
+    --text-muted: 71 85 105; /* slate-600 — ≥4.5:1 on the off-white canvas */
+    --text-faint: 90 104 126; /* mid-slate — passes AA on surface & raised */
 
     --accent: 37 99 235; /* blue-600 — Kairos task blocks */
     --accent-strong: 29 78 216; /* blue-700 — block text / hover */
@@ -50,7 +50,7 @@
 
     --text: 226 232 240;
     --text-muted: 148 163 184;
-    --text-faint: 100 116 139;
+    --text-faint: 130 144 166; /* lifted off slate-500 to clear 4.5:1 on dark */
 
     --accent: 96 165 250; /* blue-400 — brighter to carry on dark */
     --accent-strong: 147 197 253; /* blue-300 */
@@ -87,8 +87,9 @@
     @apply inline-flex items-center rounded-xl border border-hairline bg-surface p-0.5 shadow-card;
   }
   .seg-btn {
-    @apply inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-3 text-sm font-medium text-ink-muted;
+    @apply inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-3 text-sm font-medium text-ink-muted;
     @apply transition-colors duration-150 hover:bg-raised hover:text-ink;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
   }
 
   .pill {
@@ -101,12 +102,14 @@
   .theme-toggle {
     @apply inline-flex h-9 w-9 items-center justify-center rounded-xl border border-hairline bg-surface text-ink-muted shadow-card;
     @apply transition-colors duration-150 hover:bg-raised hover:text-ink;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
   }
 
   /* ── Form primitives ─────────────────────────────────────────────────────── */
   .btn {
     @apply inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-accent-fg shadow-block;
     @apply transition-all duration-150 ease-snap hover:bg-accent-strong hover:shadow-lift active:scale-[0.98] disabled:opacity-50 disabled:shadow-none;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
   }
   .field {
     @apply rounded-lg border border-hairline bg-raised px-2.5 py-2 text-sm text-ink placeholder:text-ink-faint;
@@ -157,14 +160,23 @@
     @apply truncate text-xs font-semibold leading-tight;
   }
   .block-time {
-    @apply truncate text-[10px] font-medium opacity-70;
+    @apply truncate text-[10px] font-medium;
   }
+  /* Hidden via opacity (not display) so it stays in the tab order and reachable
+     by keyboard; revealed on hover, focus-within, and always on touch. */
   .block-del {
-    @apply absolute right-1.5 top-1 hidden h-5 w-5 items-center justify-center rounded-md text-current;
-    @apply hover:bg-accent/20;
+    @apply absolute right-1.5 top-1 flex h-6 w-6 items-center justify-center rounded-md text-current opacity-0;
+    @apply transition-opacity duration-150 hover:bg-accent/20;
+    @apply focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50;
   }
-  .block:hover .block-del {
-    @apply flex;
+  .block:hover .block-del,
+  .block:focus-within .block-del {
+    @apply opacity-100;
+  }
+  @media (hover: none) {
+    .block-del {
+      @apply opacity-100;
+    }
   }
 
   /* Dashed ghost marking a free gap in the grid. */
@@ -197,6 +209,7 @@
   .freeslot-chip {
     @apply flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs;
     @apply transition-all duration-150 ease-snap cursor-pointer;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-free/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
     border-color: rgb(var(--free) / 0.35);
     background-color: rgb(var(--free) / 0.08);
     color: rgb(var(--free-strong));

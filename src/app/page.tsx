@@ -39,7 +39,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ d
       <DateToolbar date={date} isToday={isToday} />
 
       {loadError && (
-        <div className="card border-now/40 bg-now/5 p-4 text-sm text-ink">
+        <div role="alert" className="card border-now/40 bg-now/5 p-4 text-sm text-ink">
           <p className="font-semibold text-now">Couldn’t load the schedule.</p>
           <p className="mt-1 text-ink-muted">{loadError}</p>
           <p className="mt-2 text-xs text-ink-faint">

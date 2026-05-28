@@ -28,7 +28,7 @@ export function FreeSlotsPanel({ slots }: { slots: FreeSlot[] }) {
       </div>
 
       {slots.length === 0 ? (
-        <p className="text-xs text-ink-muted">No open gaps today — the day is fully booked.</p>
+        <p className="text-xs text-ink-muted">No open gaps today; the day is fully booked.</p>
       ) : (
         <ul className="space-y-2">
           {slots.map((s, i) => (

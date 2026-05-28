@@ -70,7 +70,7 @@ export function AddTaskForm({ date }: { date: string }) {
         <input id="estimateMinutes" type="number" min={1} name="estimateMinutes" className="field w-full" placeholder="30" />
       </div>
 
-      {state?.error && <p className="text-xs text-now">{state.error}</p>}
+      {state?.error && <p role="alert" className="text-xs text-now">{state.error}</p>}
 
       <button type="submit" className="btn w-full" disabled={pending}>
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

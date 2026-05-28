@@ -106,7 +106,7 @@ export function DayColumn({ dayStartUtc, blocks, freeSlots, isToday }: Props) {
   return (
     <div>
       {error && (
-        <p className="mb-2 rounded-lg border border-now/40 bg-now/10 px-3 py-2 text-xs font-medium text-now">
+        <p role="alert" className="mb-2 rounded-lg border border-now/40 bg-now/10 px-3 py-2 text-xs font-medium text-now">
           {error}
         </p>
       )}

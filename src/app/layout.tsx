@@ -4,7 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Kairos — schedule",
+  title: "Kairos · schedule",
   description: "A time-blocked todo app. The right & opportune time to do a task.",
 };
 

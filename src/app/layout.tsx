@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { TimezoneToggle } from "@/components/TimezoneToggle";
+import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone } from "@/lib/timezone";
 import "./globals.css";
 
 const sans = Inter({
@@ -27,14 +30,21 @@ export const metadata: Metadata = {
 // Three-state: explicit "dark", explicit "light", or system (no key set).
 const themeInit = `(function(){try{var t=localStorage.getItem('kairos-theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');document.documentElement.dataset.themePref=t||'system';}catch(e){}})();`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const jar = await cookies();
+  const raw = jar.get(TZ_COOKIE)?.value;
+  const tz = raw && isValidTimeZone(raw) ? raw : DEFAULT_TZ;
+
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
       <body className="min-h-screen antialiased">
-        <ThemeToggle />
+        <div className="corner-controls">
+          <TimezoneToggle currentTz={tz} />
+          <ThemeToggle />
+        </div>
         <main className="px-6 pb-12 pt-10 sm:px-8">{children}</main>
         <Analytics />
         <SpeedInsights />

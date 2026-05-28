@@ -8,11 +8,12 @@ import {
   PX_PER_MIN,
   blockTimeMeta,
   fmtDuration,
+  fmtHHMM,
   minutesFromDayStart,
   snapMinutes,
 } from "@/lib/time";
 import type { FreeSlot, ScheduledBlock } from "@/lib/types";
-import { InlineComposer, fmtHHMM } from "./InlineComposer";
+import { InlineComposer } from "./InlineComposer";
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
 const GRID_HEIGHT = DAY_MINUTES * PX_PER_MIN; // 2304
@@ -407,9 +408,6 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
             const movable = b.source === "kairos" && !isPast;
             const isEditing = editingId === b.id;
 
-            const startIso = new Date(dayStartMs + top * 60_000).toISOString();
-            const endIso = new Date(dayStartMs + (top + dur) * 60_000).toISOString();
-
             const cls = [
               "block",
               movable ? "block-kairos" : "",
@@ -463,8 +461,6 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
                 <BlockTimeLine
                   startMin={top}
                   endMin={top + dur}
-                  startIso={isDragging ? startIso : b.startUtc}
-                  endIso={isDragging ? endIso : b.endUtc}
                   nowMin={isToday ? nowMin : null}
                 />
                 {movable && !isEditing && (
@@ -568,17 +564,13 @@ function StatusLeft({
 function BlockTimeLine({
   startMin,
   endMin,
-  startIso,
-  endIso,
   nowMin,
 }: {
   startMin: number;
   endMin: number;
-  startIso: string;
-  endIso: string;
   nowMin: number | null;
 }) {
-  const meta = blockTimeMeta({ startMin, endMin, nowMin, startIso, endIso });
+  const meta = blockTimeMeta({ startMin, endMin, nowMin });
   return (
     <div className="block-time">
       {meta.range}

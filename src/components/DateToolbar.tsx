@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { WEEK_DAYS, addDays, todayUtc } from "@/lib/time";
+import { WEEK_DAYS, addDays, todayInTz } from "@/lib/time";
+import { zoneFor } from "@/lib/timezone";
 
 type View = "day" | "week";
 
@@ -15,8 +16,8 @@ function utc(date: string): Date {
   return new Date(`${date}T00:00:00.000Z`);
 }
 
-function buildHref(date: string, view: View): string {
-  const isTodayDate = date === todayUtc();
+function buildHref(date: string, view: View, tz: string): string {
+  const isTodayDate = date === todayInTz(tz);
   if (view === "day") return isTodayDate ? "/" : `/?date=${date}`;
   return isTodayDate ? "/?view=week" : `/?view=week&date=${date}`;
 }
@@ -25,23 +26,31 @@ export function DateToolbar({
   date,
   isToday,
   view,
+  tz,
 }: {
   date: string;
   isToday: boolean;
   view: View;
+  tz: string;
 }) {
   const step = view === "week" ? WEEK_DAYS : 1;
-  const prevHref = buildHref(addDays(date, -step), view);
-  const nextHref = buildHref(addDays(date, step), view);
+  const prevHref = buildHref(addDays(date, -step), view, tz);
+  const nextHref = buildHref(addDays(date, step), view, tz);
   const todayHref = view === "week" ? "/?view=week" : "/";
 
-  const dayToggleHref = view === "day" ? undefined : buildHref(date, "day");
-  const weekToggleHref = view === "week" ? undefined : buildHref(date, "week");
+  const dayToggleHref = view === "day" ? undefined : buildHref(date, "day", tz);
+  const weekToggleHref = view === "week" ? undefined : buildHref(date, "week", tz);
+
+  const tzShort = zoneFor(tz).short;
 
   return (
     <header className="mb-6 flex items-end justify-between gap-6">
       <div className="min-w-0">
-        {view === "day" ? <DayTitle date={date} isToday={isToday} /> : <WeekTitle date={date} />}
+        {view === "day" ? (
+          <DayTitle date={date} isToday={isToday} tzShort={tzShort} />
+        ) : (
+          <WeekTitle date={date} tzShort={tzShort} />
+        )}
       </div>
 
       <div className="flex items-center gap-3 pb-1">
@@ -107,7 +116,7 @@ function ViewToggleLink({
   );
 }
 
-function DayTitle({ date, isToday }: { date: string; isToday: boolean }) {
+function DayTitle({ date, isToday, tzShort }: { date: string; isToday: boolean; tzShort: string }) {
   const d = utc(date);
   return (
     <>
@@ -126,13 +135,13 @@ function DayTitle({ date, isToday }: { date: string; isToday: boolean }) {
         <span>{monthDayFmt.format(d)}</span>
         <span className="num text-ink-faint" aria-hidden="true">·</span>
         <span className="num text-ink-faint">{yearFmt.format(d)}</span>
-        <span className="num ml-2 text-[10px] uppercase tracking-[0.18em] text-ink-faint">UTC</span>
+        <span className="num ml-2 text-[10px] uppercase tracking-[0.18em] text-ink-faint">{tzShort}</span>
       </p>
     </>
   );
 }
 
-function WeekTitle({ date }: { date: string }) {
+function WeekTitle({ date, tzShort }: { date: string; tzShort: string }) {
   const first = utc(date);
   const last = utc(addDays(date, WEEK_DAYS - 1));
   const sameMonth = first.getUTCMonth() === last.getUTCMonth();
@@ -156,7 +165,7 @@ function WeekTitle({ date }: { date: string }) {
         <span className="num">{lastLabel}</span>
         <span className="num text-ink-faint" aria-hidden="true">·</span>
         <span className="num text-ink-faint">{yearLabel}</span>
-        <span className="num ml-2 text-[10px] uppercase tracking-[0.18em] text-ink-faint">UTC</span>
+        <span className="num ml-2 text-[10px] uppercase tracking-[0.18em] text-ink-faint">{tzShort}</span>
       </p>
     </>
   );

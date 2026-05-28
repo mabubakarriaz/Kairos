@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addTaskAction } from "@/app/actions";
-import { PX_PER_MIN, fmtDuration } from "@/lib/time";
+import { PX_PER_MIN, fmtDuration, fmtHHMM } from "@/lib/time";
 
 interface Props {
   date: string;
@@ -11,13 +11,6 @@ interface Props {
   durMin: number;
   onClose: () => void;
   onSubmitted: () => void;
-}
-
-export function fmtHHMM(minutes: number): string {
-  const total = Math.max(0, Math.min(24 * 60, Math.round(minutes)));
-  const h = Math.floor(total / 60) % 24;
-  const m = total % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 export function parseHHMM(input: string): number | null {

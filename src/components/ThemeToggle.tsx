@@ -59,7 +59,7 @@ export function ThemeToggle() {
       onClick={cycle}
       aria-label={`Theme: ${LABEL[shown]} (click to change)`}
       title={`Theme · ${LABEL[shown]}`}
-      className="fixed right-5 top-5 z-50 inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-faint transition-colors duration-200 ease-snap hover:bg-raised hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+      className="glyph-btn"
     >
       {shown === "light" && (
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

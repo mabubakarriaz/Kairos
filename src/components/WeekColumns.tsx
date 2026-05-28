@@ -8,12 +8,12 @@ import {
   PX_PER_MIN,
   blockTimeMeta,
   fmtDuration,
+  fmtHHMM,
   minutesFromDayStart,
   snapMinutes,
-  todayUtc,
 } from "@/lib/time";
 import type { FreeSlot, ScheduledBlock } from "@/lib/types";
-import { InlineComposer, fmtHHMM } from "./InlineComposer";
+import { InlineComposer } from "./InlineComposer";
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
 const GRID_HEIGHT = DAY_MINUTES * PX_PER_MIN; // 2304
@@ -31,6 +31,8 @@ export interface WeekDay {
 
 interface Props {
   days: WeekDay[];
+  /** YYYY-MM-DD for "today" in the active zone — passed in from the server. */
+  today: string;
 }
 
 type DragState = {
@@ -44,9 +46,8 @@ type DragState = {
 
 type ComposerState = { dateIdx: number; topMin: number; durMin: number } | null;
 
-export function WeekColumns({ days }: Props) {
+export function WeekColumns({ days, today }: Props) {
   const router = useRouter();
-  const today = todayUtc();
   const todayIdx = days.findIndex((d) => d.date === today);
   const isPastByCol = useMemo(() => days.map((d) => d.date < today), [days, today]);
 
@@ -439,7 +440,6 @@ export function WeekColumns({ days }: Props) {
             <div className="week-cols">
               {days.map((d, i) => {
                 const dayStartUtc = d.dayStartUtc;
-                const dayStartMs = new Date(dayStartUtc).getTime();
                 const past = isPastByCol[i];
                 const isTodayCol = d.date === today;
                 const blocks = blocksByCol[i];
@@ -496,9 +496,6 @@ export function WeekColumns({ days }: Props) {
                       const movable = b.source === "kairos" && !past;
                       const isEditing = editingId === b.id;
 
-                      const startIso = new Date(dayStartMs + top * 60_000).toISOString();
-                      const endIso = new Date(dayStartMs + (top + dur) * 60_000).toISOString();
-
                       const cls = [
                         "block",
                         movable ? "block-kairos" : "",
@@ -552,8 +549,6 @@ export function WeekColumns({ days }: Props) {
                           <BlockTimeLine
                             startMin={top}
                             endMin={top + dur}
-                            startIso={isDragging ? startIso : b.startUtc}
-                            endIso={isDragging ? endIso : b.endUtc}
                             nowMin={isTodayCol ? nowMin : null}
                           />
                           {movable && !isEditing && (
@@ -575,8 +570,6 @@ export function WeekColumns({ days }: Props) {
                         const top = incomingDrag.dragTop;
                         const dur = incomingDrag.durMin;
                         const height = Math.max(dur * PX_PER_MIN, 22);
-                        const startIso = new Date(dayStartMs + top * 60_000).toISOString();
-                        const endIso = new Date(dayStartMs + (top + dur) * 60_000).toISOString();
                         return (
                           <div
                             key={`incoming-${b.id}`}
@@ -587,8 +580,6 @@ export function WeekColumns({ days }: Props) {
                             <BlockTimeLine
                               startMin={top}
                               endMin={top + dur}
-                              startIso={startIso}
-                              endIso={endIso}
                               nowMin={null}
                             />
                           </div>
@@ -639,17 +630,13 @@ export function WeekColumns({ days }: Props) {
 function BlockTimeLine({
   startMin,
   endMin,
-  startIso,
-  endIso,
   nowMin,
 }: {
   startMin: number;
   endMin: number;
-  startIso: string;
-  endIso: string;
   nowMin: number | null;
 }) {
-  const meta = blockTimeMeta({ startMin, endMin, nowMin, startIso, endIso });
+  const meta = blockTimeMeta({ startMin, endMin, nowMin });
   return (
     <div className="block-time">
       {meta.range}

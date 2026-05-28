@@ -1,6 +1,11 @@
-// Kairos MVP runs the schedule in UTC — every time shown and stored is UTC. This
-// keeps the day-window math trivial and bug-free; localized timezones are a future
-// upgrade (the schema already stores timestamptz).
+// Grid math + day-window for Kairos. Storage is UTC end-to-end; the values
+// flowing through these functions are TZ-aware because the *day* boundary is
+// taken at local midnight in the active zone (see src/lib/timezone.ts).
+// As long as `dayStartUtc` is the UTC instant of local midnight, "minutes
+// from day start" linearly maps to local wall-clock minutes, and the renderer
+// stays zone-agnostic.
+
+import { todayInZone, zonedDayStartUtc, zonedWallClockToUtc } from "@/lib/timezone";
 
 /** Minutes per grid slot — the schedule snaps drags/free-slots to this. */
 export const SLOT_MINUTES = 15;
@@ -10,34 +15,34 @@ export const PX_PER_MIN = 1.6;
 
 export const DAY_MINUTES = 24 * 60;
 
-/** Today as yyyy-mm-dd (UTC). */
-export function todayUtc(): string {
-  return new Date().toISOString().slice(0, 10);
+/** Today's calendar date (YYYY-MM-DD) as the active zone reads the clock now. */
+export function todayInTz(timeZone: string): string {
+  return todayInZone(timeZone);
 }
 
-/** Validate a yyyy-mm-dd string, falling back to today (UTC) if missing/invalid. */
-export function normalizeDate(input: string | undefined | null): string {
+/** Validate a yyyy-mm-dd string, falling back to today (in zone) if missing/invalid. */
+export function normalizeDate(input: string | undefined | null, timeZone: string): string {
   if (input && /^\d{4}-\d{2}-\d{2}$/.test(input) && !Number.isNaN(Date.parse(`${input}T00:00:00Z`))) {
     return input;
   }
-  return todayUtc();
+  return todayInTz(timeZone);
 }
 
-/** Half-open UTC window [00:00, next 00:00) for a yyyy-mm-dd date. */
-export function dayWindowUtc(date: string): { startUtc: string; endUtc: string } {
-  const start = new Date(`${date}T00:00:00.000Z`);
-  const end = new Date(start.getTime() + DAY_MINUTES * 60_000);
-  return { startUtc: start.toISOString(), endUtc: end.toISOString() };
+/** Half-open UTC window [local-midnight, next-local-midnight) for a date in zone. */
+export function dayWindow(date: string, timeZone: string): { startUtc: string; endUtc: string } {
+  const startUtc = zonedDayStartUtc(date, timeZone);
+  const endUtc = zonedDayStartUtc(addDays(date, 1), timeZone);
+  return { startUtc, endUtc };
 }
 
 /** Number of columns rendered side-by-side in the week view. */
 export const WEEK_DAYS = 5;
 
-/** Half-open UTC window covering WEEK_DAYS consecutive days starting at `date`. */
-export function weekWindowUtc(date: string): { startUtc: string; endUtc: string } {
-  const start = new Date(`${date}T00:00:00.000Z`);
-  const end = new Date(start.getTime() + WEEK_DAYS * DAY_MINUTES * 60_000);
-  return { startUtc: start.toISOString(), endUtc: end.toISOString() };
+/** Half-open UTC window covering WEEK_DAYS consecutive days starting at `date`, in zone. */
+export function weekWindow(date: string, timeZone: string): { startUtc: string; endUtc: string } {
+  const startUtc = zonedDayStartUtc(date, timeZone);
+  const endUtc = zonedDayStartUtc(addDays(date, WEEK_DAYS), timeZone);
+  return { startUtc, endUtc };
 }
 
 /** The list of yyyy-mm-dd dates rendered in the week view, anchored at `date`. */
@@ -45,19 +50,19 @@ export function weekDates(date: string): string[] {
   return Array.from({ length: WEEK_DAYS }, (_, i) => addDays(date, i));
 }
 
-/** Shift a yyyy-mm-dd date by n days (UTC). */
+/** Shift a yyyy-mm-dd date by n days. Calendar math — TZ-agnostic. */
 export function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00.000Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
 
-/** Build a UTC ISO timestamp from a date (yyyy-mm-dd) and a time (HH:MM). */
-export function isoAt(date: string, time: string): string {
-  return new Date(`${date}T${time}:00.000Z`).toISOString();
+/** Build a UTC ISO timestamp from a date (yyyy-mm-dd) and a wall-clock time (HH:MM) in zone. */
+export function isoAt(date: string, time: string, timeZone: string): string {
+  return zonedWallClockToUtc(date, time, timeZone);
 }
 
-/** Minutes since the given day start (UTC) for an ISO timestamp. */
+/** Minutes since the given day start for an ISO timestamp. */
 export function minutesFromDayStart(iso: string, dayStartUtc: string): number {
   return (new Date(iso).getTime() - new Date(dayStartUtc).getTime()) / 60_000;
 }
@@ -68,13 +73,17 @@ export function snapMinutes(minutes: number): number {
   return Math.max(0, Math.min(DAY_MINUTES, snapped));
 }
 
-/** "HH:MM" (UTC) for an ISO timestamp. */
-export function fmtTime(iso: string): string {
-  return new Date(iso).toISOString().slice(11, 16);
+/** "HH:MM" from minutes-since-local-midnight. The renderer-side formatter. */
+export function fmtHHMM(minutes: number): string {
+  // Allow values outside [0, DAY_MINUTES] for blocks that cross local midnight.
+  const norm = ((Math.round(minutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+  const h = Math.floor(norm / 60);
+  const m = norm % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-export function fmtRange(startIso: string, endIso: string): string {
-  return `${fmtTime(startIso)}–${fmtTime(endIso)}`;
+export function fmtRange(startMin: number, endMin: number): string {
+  return `${fmtHHMM(startMin)}–${fmtHHMM(endMin)}`;
 }
 
 /** Humanize a slot duration, e.g. "1h 30m", "45m". */
@@ -95,10 +104,8 @@ export function blockTimeMeta(args: {
   startMin: number;
   endMin: number;
   nowMin: number | null;
-  startIso: string;
-  endIso: string;
 }): { range: string; tail: string; active: boolean } {
-  const range = fmtRange(args.startIso, args.endIso);
+  const range = fmtRange(args.startMin, args.endMin);
   const active =
     args.nowMin != null && args.nowMin >= args.startMin && args.nowMin < args.endMin;
   if (active) {

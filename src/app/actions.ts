@@ -1,9 +1,17 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createTaskWithBlock } from "@/server/tasks";
 import { deleteBlock, renameBlock, rescheduleBlock } from "@/server/schedule";
 import { isoAt } from "@/lib/time";
+import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone } from "@/lib/timezone";
+
+async function activeTz(): Promise<string> {
+  const jar = await cookies();
+  const raw = jar.get(TZ_COOKIE)?.value;
+  return raw && isValidTimeZone(raw) ? raw : DEFAULT_TZ;
+}
 
 export interface ActionResult {
   ok: boolean;
@@ -25,8 +33,9 @@ export async function addTaskAction(_prev: ActionResult | null, formData: FormDa
   if (!DATE.test(date)) return { ok: false, error: "Invalid date." };
   if (!TIME.test(startTime) || !TIME.test(endTime)) return { ok: false, error: "Start and end times are required." };
 
-  const startUtc = isoAt(date, startTime);
-  const endUtc = isoAt(date, endTime);
+  const tz = await activeTz();
+  const startUtc = isoAt(date, startTime, tz);
+  const endUtc = isoAt(date, endTime, tz);
   if (new Date(endUtc) <= new Date(startUtc)) return { ok: false, error: "End time must be after the start time." };
 
   let estimate: number | null = null;

@@ -1,18 +1,25 @@
+import { cookies } from "next/headers";
 import { DateToolbar } from "@/components/DateToolbar";
 import { DayColumn } from "@/components/DayColumn";
 import { WeekColumns, type WeekDay } from "@/components/WeekColumns";
 import { getBlocksInRange } from "@/server/schedule";
 import { getFreeSlots } from "@/server/freeslots";
 import {
-  dayWindowUtc,
+  dayWindow,
   normalizeDate,
-  todayUtc,
+  todayInTz,
   weekDates,
-  weekWindowUtc,
+  weekWindow,
 } from "@/lib/time";
+import {
+  DEFAULT_TZ,
+  TZ_COOKIE,
+  isValidTimeZone,
+  zonedDayStartUtc,
+} from "@/lib/timezone";
 import type { FreeSlot, ScheduledBlock } from "@/lib/types";
 
-// Always render on request — the page reads ?date / ?view and live DB data.
+// Always render on request — the page reads ?date / ?view + cookie + live DB data.
 export const dynamic = "force-dynamic";
 
 type View = "day" | "week";
@@ -21,29 +28,36 @@ function parseView(input: string | undefined | null): View {
   return input === "week" ? "week" : "day";
 }
 
+async function resolveTz(): Promise<string> {
+  const jar = await cookies();
+  const raw = jar.get(TZ_COOKIE)?.value;
+  return raw && isValidTimeZone(raw) ? raw : DEFAULT_TZ;
+}
+
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<{ date?: string; view?: string }>;
 }) {
   const { date: dateParam, view: viewParam } = await searchParams;
-  const date = normalizeDate(dateParam);
+  const tz = await resolveTz();
+  const date = normalizeDate(dateParam, tz);
   const view = parseView(viewParam);
-  const isToday = date === todayUtc();
+  const isToday = date === todayInTz(tz);
 
   return (
     <div className={view === "week" ? "mx-auto max-w-7xl" : "mx-auto max-w-3xl"}>
-      <DateToolbar date={date} isToday={isToday} view={view} />
-      {view === "week" ? <WeekView date={date} /> : <DayView date={date} />}
+      <DateToolbar date={date} isToday={isToday} view={view} tz={tz} />
+      {view === "week" ? <WeekView date={date} tz={tz} /> : <DayView date={date} tz={tz} />}
     </div>
   );
 }
 
-async function DayView({ date }: { date: string }) {
-  const today = todayUtc();
+async function DayView({ date, tz }: { date: string; tz: string }) {
+  const today = todayInTz(tz);
   const isToday = date === today;
   const isPast = date < today;
-  const { startUtc, endUtc } = dayWindowUtc(date);
+  const { startUtc, endUtc } = dayWindow(date, tz);
 
   let blocks: ScheduledBlock[] = [];
   let freeSlots: FreeSlot[] = [];
@@ -74,31 +88,37 @@ async function DayView({ date }: { date: string }) {
   );
 }
 
-async function WeekView({ date }: { date: string }) {
+async function WeekView({ date, tz }: { date: string; tz: string }) {
+  const today = todayInTz(tz);
   const dates = weekDates(date);
-  const { startUtc, endUtc } = weekWindowUtc(date);
+  const { startUtc, endUtc } = weekWindow(date, tz);
 
   // One ranged blocks query + WEEK_DAYS parallel per-day free-slot queries.
+  const dayWindows = dates.map((d) => {
+    const start = zonedDayStartUtc(d, tz);
+    const end = zonedDayStartUtc(addOneDay(d), tz);
+    return { date: d, startUtc: start, endUtc: end };
+  });
+
   const [blocksRes, freeResults] = await Promise.all([
     Promise.allSettled([getBlocksInRange(startUtc, endUtc)]).then((r) => r[0]),
-    Promise.allSettled(
-      dates.map((d) => {
-        const window = dayWindowUtc(d);
-        return getFreeSlots(window.startUtc, window.endUtc, 5);
-      }),
-    ),
+    Promise.allSettled(dayWindows.map((w) => getFreeSlots(w.startUtc, w.endUtc, 5))),
   ]);
 
   const allBlocks: ScheduledBlock[] = blocksRes.status === "fulfilled" ? blocksRes.value : [];
 
-  const days: WeekDay[] = dates.map((d, i) => {
-    const window = dayWindowUtc(d);
-    const dayBlocks = allBlocks.filter((b) => b.startUtc.slice(0, 10) === d);
+  const days: WeekDay[] = dayWindows.map((w, i) => {
+    const wStartMs = new Date(w.startUtc).getTime();
+    const wEndMs = new Date(w.endUtc).getTime();
+    const dayBlocks = allBlocks.filter((b) => {
+      const bs = new Date(b.startUtc).getTime();
+      return bs >= wStartMs && bs < wEndMs;
+    });
     const freeRes = freeResults[i];
     const freeSlots: FreeSlot[] = freeRes && freeRes.status === "fulfilled" ? freeRes.value : [];
     return {
-      date: d,
-      dayStartUtc: window.startUtc,
+      date: w.date,
+      dayStartUtc: w.startUtc,
       blocks: dayBlocks,
       freeSlots,
     };
@@ -113,9 +133,15 @@ async function WeekView({ date }: { date: string }) {
   return (
     <>
       <LoadErrorNotice errors={errors} />
-      <WeekColumns days={days} />
+      <WeekColumns days={days} today={today} />
     </>
   );
+}
+
+function addOneDay(date: string): string {
+  const d = new Date(`${date}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 function errMsg(e: unknown): string {
@@ -138,4 +164,3 @@ function LoadErrorNotice({ errors }: { errors: string[] }) {
     </div>
   );
 }
-

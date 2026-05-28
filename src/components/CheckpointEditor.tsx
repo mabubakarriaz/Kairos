@@ -154,7 +154,7 @@ export function CheckpointEditor(props: Props) {
           {error}
         </span>
       ) : (
-        <span className="checkpoint-editor-meta" aria-hidden="true">
+        <span className="checkpoint-editor-meta checkpoint-editor-hint" aria-hidden="true">
           {pending ? "saving" : `↵ ${verb}`}
         </span>
       )}

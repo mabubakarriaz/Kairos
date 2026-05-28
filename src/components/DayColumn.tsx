@@ -81,6 +81,7 @@ export function DayColumn({
   const [composer, setComposer] = useState<ComposerState>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cpEdit, setCpEdit] = useState<CheckpointEditState>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -367,10 +368,21 @@ export function DayColumn({
     }
   }
 
-  async function remove(e: React.MouseEvent, id: string) {
+  function requestRemove(e: React.MouseEvent, block: ScheduledBlock) {
     e.stopPropagation();
+    // Recurring blocks open the inline confirm strip; one-shot blocks delete
+    // immediately (the existing immediate-and-final behaviour).
+    if (block.seriesId) {
+      setConfirmDeleteId(block.id);
+      return;
+    }
+    void commitRemove(block.id, "occurrence");
+  }
+
+  async function commitRemove(id: string, scope: "occurrence" | "future") {
+    setConfirmDeleteId(null);
     setPendingId(id);
-    const res = await deleteBlockAction(id);
+    const res = await deleteBlockAction(id, scope);
     setPendingId(null);
     if (!res.ok) setError(res.error ?? "Could not delete.");
     else {
@@ -390,7 +402,7 @@ export function DayColumn({
   );
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       {error && (
         <p
           role="alert"
@@ -402,7 +414,7 @@ export function DayColumn({
 
       <div
         ref={scrollRef}
-        className="scroll-area max-h-[78vh] overflow-y-auto overflow-x-hidden rounded-md border border-hairline bg-surface"
+        className="scroll-area min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border border-hairline bg-surface"
       >
         <div
           ref={gridRef}
@@ -556,13 +568,13 @@ export function DayColumn({
                     now
                   </span>
                 )}
-                {movable && !isEditing && (
+                {movable && !isEditing && confirmDeleteId !== b.id && (
                   <button
                     type="button"
                     className="block-del"
-                    aria-label="Remove block"
+                    aria-label={b.seriesId ? "Remove block (recurring)" : "Remove block"}
                     onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => remove(e, b.id)}
+                    onClick={(e) => requestRemove(e, b)}
                   >
                     <svg
                       className="h-3 w-3"
@@ -577,6 +589,13 @@ export function DayColumn({
                       <path d="M18 6 6 18M6 6l12 12" />
                     </svg>
                   </button>
+                )}
+                {movable && !isEditing && confirmDeleteId === b.id && (
+                  <SeriesDeleteConfirm
+                    onJustThis={() => void commitRemove(b.id, "occurrence")}
+                    onFuture={() => void commitRemove(b.id, "future")}
+                    onCancel={() => setConfirmDeleteId(null)}
+                  />
                 )}
                 {isEditing ? (
                   <BlockTitleInput
@@ -668,6 +687,80 @@ export function DayColumn({
         </div>
         <StatusRight isPast={isPast} blockCount={blocks.length} hasComposer={composer !== null} />
       </div>
+    </div>
+  );
+}
+
+function SeriesDeleteConfirm({
+  onJustThis,
+  onFuture,
+  onCancel,
+}: {
+  onJustThis: () => void;
+  onFuture: () => void;
+  onCancel: () => void;
+}) {
+  // Esc closes — match the rest of the inline-editor vocabulary.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return (
+    <div
+      className="block-confirm num"
+      role="group"
+      aria-label="Remove recurring block"
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="block-confirm-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          onJustThis();
+        }}
+      >
+        just this
+      </button>
+      <span className="block-confirm-sep" aria-hidden="true">·</span>
+      <button
+        type="button"
+        className="block-confirm-btn block-confirm-btn-danger"
+        onClick={(e) => {
+          e.stopPropagation();
+          onFuture();
+        }}
+      >
+        + future
+      </button>
+      <button
+        type="button"
+        className="block-confirm-cancel"
+        aria-label="Cancel remove"
+        onClick={(e) => {
+          e.stopPropagation();
+          onCancel();
+        }}
+      >
+        <svg
+          className="h-3 w-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -810,10 +903,25 @@ function StatusRight({
       </span>
     );
   }
-  if (isPast) return null;
+  if (isPast) {
+    return (
+      <span className="num text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+        {blockCount} {blockCount === 1 ? "block" : "blocks"}
+      </span>
+    );
+  }
   return (
-    <span className="num text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-      {blockCount} {blockCount === 1 ? "block" : "blocks"}
+    <span className="status-hints num">
+      <span className="status-hint">
+        <kbd>n</kbd>task
+      </span>
+      <span className="status-hint">
+        <kbd>c</kbd>mark
+      </span>
+      <span className="status-line-sep" aria-hidden="true" />
+      <span>
+        {blockCount} {blockCount === 1 ? "block" : "blocks"}
+      </span>
     </span>
   );
 }

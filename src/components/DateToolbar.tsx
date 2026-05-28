@@ -1,11 +1,30 @@
 import Link from "next/link";
-import { FIVE_DAYS, WEEK_DAYS, addDays, fiveDayDates, mondayOf, todayInTz, weekDates } from "@/lib/time";
+import {
+  FIVE_DAYS,
+  WEEK_DAYS,
+  addDays,
+  addMonths,
+  fiveDayDates,
+  monthStart,
+  mondayOf,
+  todayInTz,
+  weekDates,
+} from "@/lib/time";
 import { zoneFor } from "@/lib/timezone";
 
-type View = "day" | "5d" | "week";
+type View = "day" | "5d" | "week" | "month";
 
-const STEP: Record<View, number> = { day: 1, "5d": FIVE_DAYS, week: WEEK_DAYS };
-const VIEW_LABEL: Record<View, string> = { day: "Day", "5d": "5d", week: "Week" };
+const STEP: Record<Exclude<View, "month">, number> = {
+  day: 1,
+  "5d": FIVE_DAYS,
+  week: WEEK_DAYS,
+};
+const VIEW_LABEL: Record<View, string> = {
+  day: "Day",
+  "5d": "5d",
+  week: "Week",
+  month: "Month",
+};
 
 const weekdayLongFmt = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" });
 const weekdayShortFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
@@ -41,9 +60,14 @@ export function DateToolbar({
   tz: string;
   labelsQuery: string;
 }) {
-  const step = STEP[view];
-  const prevHref = buildHref(addDays(date, -step), view, tz, labelsQuery);
-  const nextHref = buildHref(addDays(date, step), view, tz, labelsQuery);
+  const prevHref =
+    view === "month"
+      ? buildHref(addMonths(monthStart(date), -1), view, tz, labelsQuery)
+      : buildHref(addDays(date, -STEP[view]), view, tz, labelsQuery);
+  const nextHref =
+    view === "month"
+      ? buildHref(addMonths(monthStart(date), 1), view, tz, labelsQuery)
+      : buildHref(addDays(date, STEP[view]), view, tz, labelsQuery);
   const todayHref = buildHref(todayInTz(tz), view, tz, labelsQuery);
 
   const tzShort = zoneFor(tz).short;
@@ -53,8 +77,13 @@ export function DateToolbar({
       <div className="min-w-0">
         {view === "day" ? (
           <DayTitle date={date} isToday={isToday} tzShort={tzShort} />
+        ) : view === "month" ? (
+          <MonthTitle date={date} isToday={isToday} tzShort={tzShort} />
         ) : (
-          <MultiDayTitle dates={view === "5d" ? fiveDayDates(date) : weekDates(date)} tzShort={tzShort} />
+          <MultiDayTitle
+            dates={view === "5d" ? fiveDayDates(date) : weekDates(date)}
+            tzShort={tzShort}
+          />
         )}
       </div>
 
@@ -146,6 +175,39 @@ function DayTitle({ date, isToday, tzShort }: { date: string; isToday: boolean; 
         <span className="num text-ink-faint" aria-hidden="true">·</span>
         <span className="num text-ink-faint">{yearFmt.format(d)}</span>
         <span className="num ml-2 text-[10px] uppercase tracking-[0.18em] text-ink-faint">{tzShort}</span>
+      </p>
+    </>
+  );
+}
+
+function MonthTitle({
+  date,
+  isToday,
+  tzShort,
+}: {
+  date: string;
+  isToday: boolean;
+  tzShort: string;
+}) {
+  const d = utc(date);
+  return (
+    <>
+      <h1 className="flex items-baseline gap-3 truncate text-3xl font-semibold leading-none tracking-[-0.02em] text-ink">
+        {monthLongFmt.format(d)}
+        {isToday && (
+          <span
+            className="num text-[10px] font-semibold uppercase tracking-[0.18em] text-accent-strong"
+            aria-label="This month"
+          >
+            · this month
+          </span>
+        )}
+      </h1>
+      <p className="mt-2 flex items-baseline gap-1.5 text-sm text-ink-muted">
+        <span className="num">{yearFmt.format(d)}</span>
+        <span className="num ml-2 text-[10px] uppercase tracking-[0.18em] text-ink-faint">
+          {tzShort}
+        </span>
       </p>
     </>
   );

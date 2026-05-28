@@ -18,6 +18,7 @@ import {
 import { matchesLabelFilter } from "@/lib/labels";
 import type { Checkpoint, FreeSlot, ScheduledBlock } from "@/lib/types";
 import { InlineComposer } from "./InlineComposer";
+import { CheckpointEditor } from "./CheckpointEditor";
 import { LabelFilter } from "./LabelFilter";
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
@@ -61,6 +62,11 @@ type DragState = {
 
 type ComposerState = { dateIdx: number; topMin: number; durMin: number } | null;
 
+type CheckpointEditState =
+  | { mode: "new"; dateIdx: number; topMin: number }
+  | { mode: "edit"; dateIdx: number; id: string; label: string; at: string; topMin: number }
+  | null;
+
 export function WeekColumns({ days, today, filterLabels, recentTags, view }: Props) {
   const router = useRouter();
   const todayIdx = days.findIndex((d) => d.date === today);
@@ -84,6 +90,8 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
   const [nowMin, setNowMin] = useState<number | null>(null);
   const [composer, setComposer] = useState<ComposerState>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [cpEdit, setCpEdit] = useState<CheckpointEditState>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -223,16 +231,30 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key !== "n" && e.key !== "N") return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      e.preventDefault();
-      const target = pickComposerTarget();
-      if (target) setComposer(target);
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setCpEdit(null);
+        const target = pickComposerTarget();
+        if (target) setComposer(target);
+      } else if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        setComposer(null);
+        // Pick today if in range; else the first non-past column.
+        let colIdx = todayIdx;
+        if (colIdx < 0) {
+          colIdx = isPastByCol.findIndex((p) => !p);
+          if (colIdx < 0) return;
+        }
+        const seed =
+          colIdx === todayIdx && nowMin != null ? Math.max(0, nowMin) : 9 * 60;
+        setCpEdit({ mode: "new", dateIdx: colIdx, topMin: snapMinutes(seed) });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pickComposerTarget]);
+  }, [pickComposerTarget, todayIdx, nowMin, isPastByCol]);
 
   const durationMin = (b: ScheduledBlock) =>
     (new Date(b.endUtc).getTime() - new Date(b.startUtc).getTime()) / 60_000;
@@ -426,10 +448,19 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
     }
   }
 
-  async function remove(e: React.MouseEvent, id: string) {
+  function requestRemove(e: React.MouseEvent, block: ScheduledBlock) {
     e.stopPropagation();
+    if (block.seriesId) {
+      setConfirmDeleteId(block.id);
+      return;
+    }
+    void commitRemove(block.id, "occurrence");
+  }
+
+  async function commitRemove(id: string, scope: "occurrence" | "future") {
+    setConfirmDeleteId(null);
     setPendingId(id);
-    const res = await deleteBlockAction(id);
+    const res = await deleteBlockAction(id, scope);
     setPendingId(null);
     if (!res.ok) setError(res.error ?? "Could not delete.");
     else {
@@ -442,7 +473,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
   const nextFree = pickComposerTarget();
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       {error && (
         <p
           role="alert"
@@ -454,7 +485,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
 
       <div
         ref={scrollRef}
-        className="scroll-area max-h-[78vh] overflow-auto rounded-md border border-hairline bg-surface"
+        className="scroll-area min-h-0 flex-1 overflow-auto rounded-md border border-hairline bg-surface"
       >
         <div
           className={`week-grid ${drag ? "grid-dragging" : ""}`}
@@ -485,12 +516,28 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                     </span>
                   </div>
                   {stats.bookedMin > 0 ? (
-                    <span className="week-col-stat num">
-                      {fmtDuration(stats.bookedMin)} booked
+                    <span className="week-col-stat-block num">
+                      <span className="week-col-stat">
+                        {fmtDuration(stats.bookedMin)} booked
+                      </span>
+                      {!isPastByCol[i] && (
+                        <span className="week-col-stat week-col-stat-open">
+                          {fmtDuration(stats.openMin)} open
+                        </span>
+                      )}
                     </span>
-                  ) : (
+                  ) : isPastByCol[i] ? (
                     <span className="week-col-stat week-col-stat-empty" aria-hidden="true">
                       ·
+                    </span>
+                  ) : (
+                    <span className="week-col-stat-block num">
+                      <span className="week-col-stat week-col-stat-empty" aria-hidden="true">
+                        ·
+                      </span>
+                      <span className="week-col-stat week-col-stat-open">
+                        {fmtDuration(stats.openMin)} open
+                      </span>
                     </span>
                   )}
                 </div>
@@ -535,10 +582,17 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                       />
                     )}
 
-                    {/* Checkpoints — quiet display-only in week view. Tag shows
-                        the time only (label hidden via .week-col .checkpoint-tag-label).
-                        Past days render dimmer via data-past. */}
+                    {/* Checkpoints — editable in week view too. Tag shows the time;
+                        click opens the inline editor on this column. Past days are
+                        display-only (data-past + disabled). */}
                     {d.checkpoints.map((cp) => {
+                      if (
+                        cpEdit?.mode === "edit" &&
+                        cpEdit.dateIdx === i &&
+                        cpEdit.id === cp.id
+                      ) {
+                        return null;
+                      }
                       const cpTop = checkpointTopMin(cp);
                       const cpClock = fmtClock(cpTop);
                       return (
@@ -547,19 +601,54 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                           className="checkpoint"
                           data-past={past || undefined}
                           style={{ top: cpTop * PX_PER_MIN }}
-                          aria-label={`${cp.label} at ${cpClock}`}
                           title={`${cp.label} · ${cpClock}`}
                         >
-                          <span
+                          <button
+                            type="button"
                             className="checkpoint-tag"
-                            // Tag is non-interactive in week view; visible time only.
-                            aria-hidden="true"
+                            onClick={() => {
+                              if (past) return;
+                              setComposer(null);
+                              setCpEdit({
+                                mode: "edit",
+                                dateIdx: i,
+                                id: cp.id,
+                                label: cp.label,
+                                at: cp.at,
+                                topMin: cpTop,
+                              });
+                            }}
+                            aria-label={`Edit checkpoint ${cp.label} at ${cpClock}`}
+                            disabled={past}
                           >
                             <span className="checkpoint-tag-time num">{cpClock}</span>
-                          </span>
+                          </button>
                         </div>
                       );
                     })}
+
+                    {/* Checkpoint editor — new or edit — lives inside this column. */}
+                    {cpEdit && cpEdit.dateIdx === i && cpEdit.mode === "new" && (
+                      <CheckpointEditor
+                        mode="new"
+                        date={d.date}
+                        topMin={cpEdit.topMin}
+                        onClose={() => setCpEdit(null)}
+                        onCommitted={() => setCpEdit(null)}
+                      />
+                    )}
+                    {cpEdit && cpEdit.dateIdx === i && cpEdit.mode === "edit" && (
+                      <CheckpointEditor
+                        mode="edit"
+                        date={d.date}
+                        id={cpEdit.id}
+                        label={cpEdit.label}
+                        at={cpEdit.at}
+                        topMin={cpEdit.topMin}
+                        onClose={() => setCpEdit(null)}
+                        onCommitted={() => setCpEdit(null)}
+                      />
+                    )}
 
                     {visibleFreeSlots.map((s, idx) => {
                       const topMin = minutesFromDayStart(s.startUtc, dayStartUtc);
@@ -629,13 +718,15 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                           {b.tags.length > 0 && !isEditing && !isActive && (
                             <BlockTagDots tags={b.tags} />
                           )}
-                          {movable && !isEditing && (
+                          {movable && !isEditing && confirmDeleteId !== b.id && (
                             <button
                               type="button"
                               className="block-del"
-                              aria-label="Remove block"
+                              aria-label={
+                                b.seriesId ? "Remove block (recurring)" : "Remove block"
+                              }
                               onPointerDown={(e) => e.stopPropagation()}
-                              onClick={(e) => remove(e, b.id)}
+                              onClick={(e) => requestRemove(e, b)}
                             >
                               <svg
                                 className="h-3 w-3"
@@ -650,6 +741,13 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                                 <path d="M18 6 6 18M6 6l12 12" />
                               </svg>
                             </button>
+                          )}
+                          {movable && !isEditing && confirmDeleteId === b.id && (
+                            <SeriesDeleteConfirm
+                              onJustThis={() => void commitRemove(b.id, "occurrence")}
+                              onFuture={() => void commitRemove(b.id, "future")}
+                              onCancel={() => setConfirmDeleteId(null)}
+                            />
                           )}
                           {isEditing ? (
                             <BlockTitleInput
@@ -739,6 +837,79 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
         </div>
         <StatusRight totalBlocks={totalBlocks} hasComposer={composer !== null} />
       </div>
+    </div>
+  );
+}
+
+function SeriesDeleteConfirm({
+  onJustThis,
+  onFuture,
+  onCancel,
+}: {
+  onJustThis: () => void;
+  onFuture: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return (
+    <div
+      className="block-confirm num"
+      role="group"
+      aria-label="Remove recurring block"
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="block-confirm-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          onJustThis();
+        }}
+      >
+        just this
+      </button>
+      <span className="block-confirm-sep" aria-hidden="true">·</span>
+      <button
+        type="button"
+        className="block-confirm-btn block-confirm-btn-danger"
+        onClick={(e) => {
+          e.stopPropagation();
+          onFuture();
+        }}
+      >
+        + future
+      </button>
+      <button
+        type="button"
+        className="block-confirm-cancel"
+        aria-label="Cancel remove"
+        onClick={(e) => {
+          e.stopPropagation();
+          onCancel();
+        }}
+      >
+        <svg
+          className="h-3 w-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -888,8 +1059,17 @@ function StatusRight({
     );
   }
   return (
-    <span className="num text-[10px] uppercase tracking-[0.18em] text-ink-faint">
-      {totalBlocks} {totalBlocks === 1 ? "block" : "blocks"}
+    <span className="status-hints num">
+      <span className="status-hint">
+        <kbd>n</kbd>task
+      </span>
+      <span className="status-hint">
+        <kbd>c</kbd>mark
+      </span>
+      <span className="status-line-sep" aria-hidden="true" />
+      <span>
+        {totalBlocks} {totalBlocks === 1 ? "block" : "blocks"}
+      </span>
     </span>
   );
 }

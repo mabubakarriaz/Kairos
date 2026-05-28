@@ -142,5 +142,6 @@ Never run `supabase db reset` against production. It drops every table.
 | `20260527000000_initial_schema.sql` | `tasks`, `scheduled_blocks`, the `EXCLUDE` no-overlap constraint, `free_slots()` function, RLS on. |
 | `20260528000000_checkpoints.sql` | `checkpoints` + `checkpoint_rules` for effective-dated day-dividers, `checkpoints_for_date()` function. |
 | `20260528010000_auth_lockout.sql` | `auth_lockout` table for the password-gate brute-force lockout. |
+| `20260528020000_recurrence.sql` | `series_id`/`recurrence_kind`/`recurrence_interval_days` on `tasks`, plus `create_task_series()` and `delete_block_series_from()` RPCs. |
 
-All three are idempotent and non-destructive.
+All four are idempotent and non-destructive.

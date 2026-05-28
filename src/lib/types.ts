@@ -1,5 +1,13 @@
 export type BlockSource = "kairos" | "gcal";
 
+export type RecurrenceKind = "daily" | "weekdays" | "weekly" | "interval";
+
+export interface RecurrenceSpec {
+  kind: RecurrenceKind;
+  /** Only used when kind === "interval". The N in "every N days", >= 2. */
+  intervalDays?: number;
+}
+
 export interface ScheduledBlock {
   id: string;
   taskId: string | null;
@@ -8,6 +16,10 @@ export interface ScheduledBlock {
   endUtc: string; // ISO-8601 UTC
   title: string; // task title, or "(busy)" for gcal blocks
   tags: string[]; // task labels (normalized); empty for gcal
+  /** Non-null when this block is one occurrence of a recurring series. */
+  seriesId: string | null;
+  /** The recurrence kind on this occurrence's task row, if part of a series. */
+  recurrenceKind: RecurrenceKind | null;
 }
 
 export interface FreeSlot {

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { DateToolbar } from "@/components/DateToolbar";
 import { DayColumn } from "@/components/DayColumn";
 import { WeekColumns, type WeekDay } from "@/components/WeekColumns";
+import { MonthGrid, type MonthCell } from "@/components/MonthGrid";
 import { getBlocksInRange } from "@/server/schedule";
 import { getFreeSlots } from "@/server/freeslots";
 import { getCheckpointsForDate } from "@/server/checkpoints";
@@ -14,6 +15,8 @@ import {
   fiveDayWindow,
   fmtDuration,
   mondayOf,
+  monthGridDates,
+  monthGridWindow,
   normalizeDate,
   todayInTz,
   weekDates,
@@ -31,11 +34,12 @@ import type { Checkpoint, FreeSlot, ScheduledBlock } from "@/lib/types";
 // Always render on request — the page reads ?date / ?view / ?labels + cookie + live DB data.
 export const dynamic = "force-dynamic";
 
-type View = "day" | "5d" | "week";
+type View = "day" | "5d" | "week" | "month";
 
 function parseView(input: string | undefined | null): View {
   if (input === "week") return "week";
   if (input === "5d") return "5d";
+  if (input === "month") return "month";
   return "day";
 }
 
@@ -59,6 +63,11 @@ function safeDecode(raw: string): string {
 function rangeContainsToday(view: View, date: string, today: string): boolean {
   if (view === "day") return date === today;
   if (view === "5d") return today >= date && today < addDays(date, 5);
+  if (view === "month") {
+    const d = new Date(`${date}T00:00:00.000Z`);
+    const t = new Date(`${today}T00:00:00.000Z`);
+    return d.getUTCFullYear() === t.getUTCFullYear() && d.getUTCMonth() === t.getUTCMonth();
+  }
   return mondayOf(date) === mondayOf(today);
 }
 
@@ -76,8 +85,11 @@ export default async function Page({
   const labelsQuery = filterLabels.join(",");
   const isToday = rangeContainsToday(view, date, today);
 
+  const widthClass =
+    view === "day" ? "max-w-3xl" : view === "month" ? "max-w-6xl" : "max-w-7xl";
+
   return (
-    <div className={view === "day" ? "mx-auto max-w-3xl" : "mx-auto max-w-7xl"}>
+    <div className={`mx-auto flex h-full w-full min-h-0 flex-col ${widthClass}`}>
       <DateToolbar
         date={date}
         isToday={isToday}
@@ -87,6 +99,8 @@ export default async function Page({
       />
       {view === "day" ? (
         <DayView date={date} tz={tz} filterLabels={filterLabels} labelsQuery={labelsQuery} />
+      ) : view === "month" ? (
+        <MonthView date={date} tz={tz} filterLabels={filterLabels} labelsQuery={labelsQuery} />
       ) : (
         <MultiDayView
           date={date}
@@ -138,7 +152,7 @@ async function DayView({
   if (cpRes.status === "rejected") errors.push(`checkpoints · ${errMsg(cpRes.reason)}`);
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <LoadErrorNotice errors={errors} />
       <DayStatsLine blocks={blocks} dayStartUtc={startUtc} isPast={isPast} />
       <DayColumn
@@ -153,7 +167,7 @@ async function DayView({
         labelsQuery={labelsQuery}
         recentTags={recentTags}
       />
-    </>
+    </div>
   );
 }
 
@@ -281,8 +295,9 @@ async function MultiDayView({
   });
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <LoadErrorNotice errors={errors} />
+      <WeekStatsLine days={days} today={today} />
       <WeekColumns
         days={days}
         today={today}
@@ -291,7 +306,136 @@ async function MultiDayView({
         recentTags={recentTags}
         view={view}
       />
-    </>
+    </div>
+  );
+}
+
+function WeekStatsLine({ days, today }: { days: WeekDay[]; today: string }) {
+  let booked = 0;
+  let openMin = 0;
+  for (const d of days) {
+    const s = computeDayStats(d.blocks, d.dayStartUtc);
+    booked += s.bookedMin;
+    if (d.date >= today) openMin += s.openMin;
+  }
+  if (booked === 0 && openMin === 0) return null;
+  return (
+    <p className="day-stats num" aria-label="Range allocation">
+      <span>
+        <span className="day-stats-amount">{fmtDuration(booked)}</span>{" "}
+        <span className="day-stats-label">booked</span>
+      </span>
+      {openMin > 0 && (
+        <>
+          <span className="day-stats-sep" aria-hidden="true">·</span>
+          <span>
+            <span className="day-stats-amount">{fmtDuration(openMin)}</span>{" "}
+            <span className="day-stats-label">open</span>
+          </span>
+        </>
+      )}
+    </p>
+  );
+}
+
+async function MonthView({
+  date,
+  tz,
+  filterLabels,
+  labelsQuery,
+}: {
+  date: string;
+  tz: string;
+  filterLabels: string[];
+  labelsQuery: string;
+}) {
+  const today = todayInTz(tz);
+  const gridDates = monthGridDates(date);
+  const { startUtc, endUtc } = monthGridWindow(date, tz);
+
+  const dayWindows = gridDates.map((d) => {
+    const start = zonedDayStartUtc(d, tz);
+    const end = zonedDayStartUtc(addDays(d, 1), tz);
+    return { date: d, startUtc: start, endUtc: end };
+  });
+
+  const blocksRes = await Promise.allSettled([getBlocksInRange(startUtc, endUtc)]).then(
+    (r) => r[0],
+  );
+  const allBlocks: ScheduledBlock[] =
+    blocksRes.status === "fulfilled" ? blocksRes.value : [];
+
+  const cells: MonthCell[] = dayWindows.map((w) => {
+    const wStartMs = new Date(w.startUtc).getTime();
+    const wEndMs = new Date(w.endUtc).getTime();
+    const dayBlocks = allBlocks.filter((b) => {
+      const bs = new Date(b.startUtc).getTime();
+      return bs >= wStartMs && bs < wEndMs;
+    });
+    return {
+      date: w.date,
+      dayStartUtc: w.startUtc,
+      blocks: dayBlocks,
+    };
+  });
+
+  const errors: string[] = [];
+  if (blocksRes.status === "rejected") errors.push(`schedule · ${errMsg(blocksRes.reason)}`);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <LoadErrorNotice errors={errors} />
+      <MonthStatsLine cells={cells} anchorDate={date} today={today} />
+      <MonthGrid
+        cells={cells}
+        anchorDate={date}
+        today={today}
+        tz={tz}
+        labelsQuery={labelsQuery}
+        filterLabels={filterLabels}
+      />
+    </div>
+  );
+}
+
+function MonthStatsLine({
+  cells,
+  anchorDate,
+  today,
+}: {
+  cells: MonthCell[];
+  anchorDate: string;
+  today: string;
+}) {
+  const monthDate = new Date(`${anchorDate}T00:00:00.000Z`);
+  const month = monthDate.getUTCMonth();
+  const year = monthDate.getUTCFullYear();
+  let booked = 0;
+  let openMin = 0;
+  for (const c of cells) {
+    const d = new Date(`${c.date}T00:00:00.000Z`);
+    if (d.getUTCMonth() !== month || d.getUTCFullYear() !== year) continue;
+    const s = computeDayStats(c.blocks, c.dayStartUtc);
+    booked += s.bookedMin;
+    if (c.date >= today) openMin += s.openMin;
+  }
+  if (booked === 0 && openMin === 0) return null;
+  return (
+    <p className="day-stats num" aria-label="Month allocation">
+      <span>
+        <span className="day-stats-amount">{fmtDuration(booked)}</span>{" "}
+        <span className="day-stats-label">booked</span>
+      </span>
+      {openMin > 0 && (
+        <>
+          <span className="day-stats-sep" aria-hidden="true">·</span>
+          <span>
+            <span className="day-stats-amount">{fmtDuration(openMin)}</span>{" "}
+            <span className="day-stats-label">open</span>
+          </span>
+        </>
+      )}
+    </p>
   );
 }
 

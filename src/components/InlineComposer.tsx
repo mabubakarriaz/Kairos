@@ -5,6 +5,16 @@ import { useRouter } from "next/navigation";
 import { addTaskAction } from "@/app/actions";
 import { PX_PER_MIN, fmtClock, fmtDuration, fmtHHMM } from "@/lib/time";
 import { parseLabelsInput } from "@/lib/labels";
+import type { RecurrenceKind } from "@/lib/types";
+
+type RepeatChoice = "none" | RecurrenceKind;
+const REPEAT_PRESETS: { value: Exclude<RepeatChoice, "interval">; label: string }[] = [
+  { value: "none", label: "once" },
+  { value: "daily", label: "daily" },
+  { value: "weekdays", label: "weekdays" },
+  { value: "weekly", label: "weekly" },
+];
+const REPEAT_LOOKAHEAD = "60 occurrences";
 
 interface Props {
   date: string;
@@ -46,15 +56,18 @@ export function parseHHMM(input: string): number | null {
   return hh * 60 + mm;
 }
 
-const MIN_HEIGHT = 86;
+const MIN_HEIGHT = 110;
 
 export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSubmitted }: Props) {
   const titleRef = useRef<HTMLInputElement>(null);
   const labelsRef = useRef<HTMLInputElement>(null);
+  const intervalRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [start, setStart] = useState(() => fmtClock(topMin));
   const [end, setEnd] = useState(() => fmtClock(topMin + durMin));
   const [labelsInput, setLabelsInput] = useState("");
+  const [repeat, setRepeat] = useState<RepeatChoice>("none");
+  const [intervalDays, setIntervalDays] = useState("2");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const router = useRouter();
@@ -99,6 +112,19 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
       return;
     }
 
+    // Recurrence validation lives near the server's, but we surface it
+    // inline so the user doesn't ship a broken create just to learn N must be >= 2.
+    let intervalN: number | null = null;
+    if (repeat === "interval") {
+      intervalN = Number(intervalDays);
+      if (!Number.isFinite(intervalN) || intervalN < 2 || intervalN > 30) {
+        setError("Repeat every 2 to 30 days.");
+        intervalRef.current?.focus();
+        return;
+      }
+      intervalN = Math.floor(intervalN);
+    }
+
     setPending(true);
     const labels = parseLabelsInput(labelsInput);
     const fd = new FormData();
@@ -108,6 +134,10 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
     fd.set("startTime", fmtHHMM(sMin));
     fd.set("endTime", fmtHHMM(eMin));
     fd.set("labels", labels.join(","));
+    fd.set("recurrence", repeat);
+    if (repeat === "interval" && intervalN != null) {
+      fd.set("recurrenceIntervalDays", String(intervalN));
+    }
     const res = await addTaskAction(null, fd);
     setPending(false);
 
@@ -214,6 +244,46 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
           </div>
         )}
       </div>
+      <div className="composer-repeat-row" role="group" aria-label="Repeats">
+        <span className="composer-repeat-label">repeats</span>
+        {REPEAT_PRESETS.map((preset) => (
+          <button
+            key={preset.value}
+            type="button"
+            className="composer-repeat-pill"
+            data-active={repeat === preset.value || undefined}
+            onClick={() => setRepeat(preset.value)}
+            disabled={pending}
+          >
+            {preset.label}
+          </button>
+        ))}
+        <span
+          className="composer-repeat-pill composer-repeat-interval"
+          data-active={repeat === "interval" || undefined}
+          onClick={() => {
+            setRepeat("interval");
+            intervalRef.current?.focus();
+            intervalRef.current?.select();
+          }}
+        >
+          <span>every</span>
+          <input
+            ref={intervalRef}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            className="composer-repeat-num"
+            value={intervalDays}
+            onChange={(e) => setIntervalDays(e.target.value.replace(/[^0-9]/g, ""))}
+            onFocus={() => setRepeat("interval")}
+            aria-label="Repeat every N days"
+            disabled={pending}
+            maxLength={2}
+          />
+          <span>d</span>
+        </span>
+      </div>
       <div className="composer-meta">
         {error ? (
           <span className="composer-error" role="alert">{error}</span>
@@ -221,7 +291,15 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
           <>
             <span>{fmtDuration(previewDur)}</span>
             <span aria-hidden="true">·</span>
-            <span>{pending ? "saving…" : "enter to add · esc to cancel"}</span>
+            <span>
+              {pending
+                ? "saving…"
+                : repeat === "none"
+                  ? "enter to add · esc to cancel"
+                  : repeat === "interval"
+                    ? `every ${intervalDays || "?"} days · ${REPEAT_LOOKAHEAD} ahead`
+                    : `repeats ${repeat} · ${REPEAT_LOOKAHEAD} ahead`}
+            </span>
           </>
         )}
       </div>

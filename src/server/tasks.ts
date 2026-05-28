@@ -1,8 +1,11 @@
 import "server-only";
 import { getSupabase } from "@/lib/supabase";
 import { sanitizeLabels } from "@/lib/labels";
+import type { RecurrenceSpec } from "@/lib/types";
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result =
+  | { ok: true; insertedCount?: number }
+  | { ok: false; error: string };
 
 interface CreateTaskInput {
   title: string;
@@ -10,20 +13,56 @@ interface CreateTaskInput {
   startUtc: string;
   endUtc: string;
   tags: string[];
+  recurrence: RecurrenceSpec | null;
 }
+
+/** How far ahead to materialise occurrences. Past this, the schedule "doesn't
+ * exist yet" — the user can extend by editing or recreating. */
+const RECURRENCE_LOOKAHEAD = 60;
 
 /**
  * Create a task and schedule it in one step (the "add a task with a time range"
- * use case). If the block can't be placed (e.g. it overlaps another), the orphan
- * task is rolled back so we don't leave dangling rows.
+ * use case). For a recurring task, delegates to the SQL RPC so the loop runs
+ * in one transaction. Overlap conflicts on later occurrences are silently
+ * skipped — the first occurrence must succeed.
  */
 export async function createTaskWithBlock(input: CreateTaskInput): Promise<Result> {
   const supabase = getSupabase();
   const tags = sanitizeLabels(input.tags);
+  const estimate = input.estimateMinutes ?? 30;
 
+  if (input.recurrence) {
+    const { data, error } = await supabase.rpc("create_task_series", {
+      p_title: input.title,
+      p_tags: tags,
+      p_estimate_minutes: estimate,
+      p_start_utc: input.startUtc,
+      p_end_utc: input.endUtc,
+      p_recurrence_kind: input.recurrence.kind,
+      p_interval_days:
+        input.recurrence.kind === "interval" ? input.recurrence.intervalDays ?? null : null,
+      p_max_occurrences: RECURRENCE_LOOKAHEAD,
+    });
+
+    if (error) {
+      const overlap = error.code === "23P01" || /overlap|exclusion/i.test(error.message);
+      return {
+        ok: false,
+        error: overlap ? "That time overlaps another block." : error.message,
+      };
+    }
+    // The RPC returns a setof; the first row has the meaningful counts.
+    const row = Array.isArray(data) ? data[0] : data;
+    const insertedCount: number = row?.inserted_count ?? 0;
+    if (insertedCount === 0) return { ok: false, error: "No occurrences could be scheduled." };
+    return { ok: true, insertedCount };
+  }
+
+  // Single, non-recurring task: keep the original two-insert path so the
+  // happy case stays simple and avoids an RPC round-trip.
   const { data: task, error: taskErr } = await supabase
     .from("tasks")
-    .insert({ title: input.title, estimate_minutes: input.estimateMinutes ?? 30, tags })
+    .insert({ title: input.title, estimate_minutes: estimate, tags })
     .select("id")
     .single();
 

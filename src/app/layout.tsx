@@ -52,13 +52,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
-      <body className="min-h-screen antialiased">
+      <body className="flex h-screen flex-col overflow-hidden antialiased">
         <div className="corner-controls">
           {authed && <TimezoneToggle currentTz={tz} />}
           <ThemeToggle />
           {authed && <LogoutButton />}
         </div>
-        <main className="px-6 pb-12 pt-10 sm:px-8">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col px-6 pb-6 pt-10 sm:px-8">{children}</main>
         <Analytics />
         <SpeedInsights />
       </body>

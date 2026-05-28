@@ -1,8 +1,13 @@
 import "server-only";
 import { getSupabase } from "@/lib/supabase";
-import type { ScheduledBlock } from "@/lib/types";
+import type { RecurrenceKind, ScheduledBlock } from "@/lib/types";
 
-type TaskJoin = { title: string; tags: string[] | null };
+type TaskJoin = {
+  title: string;
+  tags: string[] | null;
+  series_id: string | null;
+  recurrence_kind: RecurrenceKind | null;
+};
 
 interface BlockRow {
   id: string;
@@ -32,22 +37,29 @@ export async function getBlocksInRange(startUtc: string, endUtc: string): Promis
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("scheduled_blocks")
-    .select("id, task_id, source, start_utc, end_utc, tasks(title, tags)")
+    .select(
+      "id, task_id, source, start_utc, end_utc, tasks(title, tags, series_id, recurrence_kind)",
+    )
     .lt("start_utc", endUtc)
     .gt("end_utc", startUtc)
     .order("start_utc", { ascending: true });
 
   if (error) throw new Error(`Failed to load schedule: ${error.message}`);
 
-  return (data as BlockRow[] | null ?? []).map((row) => ({
-    id: row.id,
-    taskId: row.task_id,
-    source: row.source,
-    startUtc: row.start_utc,
-    endUtc: row.end_utc,
-    title: titleOf(row),
-    tags: tagsOf(row),
-  }));
+  return (data as BlockRow[] | null ?? []).map((row) => {
+    const t = taskOf(row);
+    return {
+      id: row.id,
+      taskId: row.task_id,
+      source: row.source,
+      startUtc: row.start_utc,
+      endUtc: row.end_utc,
+      title: titleOf(row),
+      tags: tagsOf(row),
+      seriesId: row.source === "kairos" ? t?.series_id ?? null : null,
+      recurrenceKind: row.source === "kairos" ? t?.recurrence_kind ?? null : null,
+    };
+  });
 }
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -88,6 +100,18 @@ export async function deleteBlock(blockId: string): Promise<Result> {
     .delete()
     .eq("id", blockId)
     .eq("source", "kairos");
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Remove a block and all later occurrences in its recurring series. Delegated
+ * to the SQL RPC so the cascade + matching happen in one transaction. For a
+ * non-series block this falls back to deleting only that block.
+ */
+export async function deleteBlockSeriesFrom(blockId: string): Promise<Result> {
+  const supabase = getSupabase();
+  const { error } = await supabase.rpc("delete_block_series_from", { p_block_id: blockId });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

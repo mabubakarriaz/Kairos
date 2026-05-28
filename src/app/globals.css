@@ -164,7 +164,7 @@
 
   /* Status line at the bottom of the schedule. Single typographic row. */
   .status-line {
-    @apply flex items-center justify-between gap-4 px-1 py-2 text-xs leading-none text-ink-faint;
+    @apply flex flex-shrink-0 items-center justify-between gap-4 px-1 py-2 text-xs leading-none text-ink-faint;
     border-top: 1px solid rgb(var(--border));
   }
   .status-line button {
@@ -177,6 +177,27 @@
     @apply mr-2 inline-block h-px w-3 align-middle;
     background-image: linear-gradient(to right, rgb(var(--free) / 0.7) 50%, transparent 50%);
     background-size: 4px 1px;
+  }
+
+  /* Right-side keyboard hint cluster — quiet `kbd` keys with a one-word
+     affordance after each, paired with the block count. The `kbd`s pick up
+     the same warm-paper styling as the empty-grid prompt so the vocabulary
+     stays consistent. */
+  .status-hints {
+    @apply inline-flex items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-ink-faint;
+  }
+  .status-hint {
+    @apply inline-flex items-center gap-1;
+  }
+  .status-hints kbd,
+  .status-line kbd {
+    @apply inline-flex h-4 items-center justify-center rounded border px-1 text-[10px] uppercase leading-none tracking-normal;
+    border-color: rgb(var(--border-strong));
+    background-color: rgb(var(--surface));
+    color: rgb(var(--text-muted));
+    font-family: var(--font-mono-stack);
+    font-variant-numeric: tabular-nums;
+    min-width: 14px;
   }
 
   /* ── The day grid ─────────────────────────────────────────────────────────── */
@@ -307,6 +328,43 @@
     background-color: rgb(var(--accent-strong) / 0.7);
     width: 24px;
   }
+  /* Series-delete confirm — anchored at the block's top-right corner. Same
+     paper-on-paper surface vocabulary as the inline composer (accent ring +
+     warm shadow); two text choices and a cancel X. Replaces the delete glyph
+     while open so the corner never carries two affordances at once. */
+  .block-confirm {
+    @apply absolute right-1 top-1 z-20 inline-flex items-center gap-1 rounded-sm px-1.5 py-1 text-[10px] leading-none;
+    background-color: rgb(var(--surface));
+    color: rgb(var(--text-muted));
+    box-shadow:
+      0 0 0 1px rgb(var(--accent) / 0.55),
+      0 6px 16px -8px rgb(var(--shadow) / 0.25);
+  }
+  .block-confirm-btn {
+    @apply rounded-sm px-1.5 py-0.5 text-[10px] font-medium leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-muted));
+  }
+  .block-confirm-btn:hover {
+    color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent) / 0.1);
+  }
+  .block-confirm-btn-danger:hover {
+    color: rgb(var(--now));
+    background-color: rgb(var(--now) / 0.08);
+  }
+  .block-confirm-sep {
+    color: rgb(var(--text-faint) / 0.55);
+  }
+  .block-confirm-cancel {
+    @apply inline-flex h-4 w-4 items-center justify-center rounded-sm;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+  }
+  .block-confirm-cancel:hover {
+    color: rgb(var(--text));
+  }
+
   .block-del {
     @apply absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-sm opacity-0;
     @apply transition-opacity duration-150;
@@ -560,6 +618,24 @@
     display: none;
   }
 
+  /* In-column checkpoint editor — same accent-ring + warm shadow as elsewhere,
+     pinched into the column. The "↵ save" hint hides because there isn't room
+     beside the label + time + remove button; Enter still commits. Flex wraps so
+     the editor degrades gracefully when the column is very narrow. */
+  .week-col .checkpoint-editor {
+    left: 3px;
+    right: 3px;
+    padding: 6px 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .week-col .checkpoint-editor-hint {
+    display: none;
+  }
+  .week-col .checkpoint-editor-time {
+    width: 64px;
+  }
+
   /* ── Inline composer — appears at the clicked slot. Replaces the old card form. */
   .composer {
     @apply absolute left-12 right-1 overflow-hidden rounded-md px-3 py-1.5;
@@ -672,15 +748,27 @@
   .week-col-header:last-child {
     border-right: 0;
   }
-  /* Per-column booked total — a single mono numeral under the day-of-week + date.
-     Empty days show a centered `·` so the column header keeps its vertical rhythm. */
+  /* Per-column allocation — two mono numerals stacked vertically: booked on
+     top (warm-paper ink), open below (lighter, cool-graphite tilt). Past days
+     drop the open row; an empty future day shows a centered `·` for booked.
+     The stack mirrors the day-view stats line vocabulary so the week reads as
+     seven columnar day-stats at once. */
+  .week-col-stat-block {
+    @apply flex flex-col items-start gap-[2px];
+  }
   .week-col-stat {
     @apply text-[10px] leading-none text-ink-faint;
     font-feature-settings: "tnum", "ss01";
     letter-spacing: 0.02em;
   }
+  .week-col-stat-open {
+    color: rgb(var(--text-faint) / 0.7);
+  }
   .week-col-header[data-today="true"] .week-col-stat {
     color: rgb(var(--text-muted));
+  }
+  .week-col-header[data-today="true"] .week-col-stat-open {
+    color: rgb(var(--text-faint) / 0.85);
   }
   .week-col-header[data-past="true"] .week-col-stat {
     color: rgb(var(--text-faint) / 0.65);
@@ -815,6 +903,113 @@
     display: none !important;
   }
 
+  /* ── Month view ──────────────────────────────────────────────────────────── */
+  /* A calm 6×7 calendar. Cells stretch to fill remaining height so the grid
+     fills the viewport without scrolling. Today carries a single Burnt-Ochre
+     tint on the date numeral; other-month days fade. Dots are small ochre
+     marks (one per block), capped with "+N". A 2px ochre share-bar pinned to
+     the cell's bottom edge shows booked share of the day. */
+  .month-grid {
+    @apply flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-hairline bg-surface;
+  }
+  .month-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-bottom: 1px solid rgb(var(--border));
+  }
+  .month-weekday {
+    @apply px-3 py-1.5 text-[10px] font-medium uppercase leading-none text-ink-muted;
+    letter-spacing: 0.12em;
+    border-right: 1px solid rgb(var(--border));
+  }
+  .month-weekday:last-child {
+    border-right: 0;
+  }
+  .month-canvas {
+    @apply min-h-0 flex-1;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 1fr;
+  }
+  .month-cell {
+    @apply relative flex min-h-0 flex-col gap-1.5 overflow-hidden px-2.5 pt-2 pb-3;
+    @apply transition-colors duration-150 ease-snap;
+    border-right: 1px solid rgb(var(--border));
+    border-bottom: 1px solid rgb(var(--border));
+    color: rgb(var(--text-muted));
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .month-cell:nth-child(7n) {
+    border-right: 0;
+  }
+  /* Last row drops its bottom border so the grid doesn't double-stroke the
+     outer container's bottom edge. */
+  .month-cell:nth-last-child(-n + 7) {
+    border-bottom: 0;
+  }
+  .month-cell:hover {
+    background-color: rgb(var(--accent) / 0.04);
+  }
+  .month-cell:focus-visible {
+    outline: none;
+    background-color: rgb(var(--accent) / 0.06);
+    box-shadow: inset 0 0 0 1px rgb(var(--accent) / 0.45);
+  }
+  .month-cell[data-today="true"] {
+    background-color: rgb(var(--accent) / 0.05);
+  }
+  .month-cell[data-today="true"]:hover {
+    background-color: rgb(var(--accent) / 0.09);
+  }
+  .month-cell-num {
+    @apply text-[13px] font-semibold leading-none;
+    color: rgb(var(--text));
+    letter-spacing: 0.01em;
+  }
+  .month-cell[data-today="true"] .month-cell-num {
+    color: rgb(var(--accent-strong));
+  }
+  .month-cell[data-otherMonth="true"] .month-cell-num {
+    color: rgb(var(--text-faint) / 0.55);
+  }
+  .month-cell[data-past="true"]:not([data-today="true"]) .month-cell-num {
+    color: rgb(var(--text-faint));
+  }
+  .month-cell-dots {
+    @apply flex flex-wrap items-center gap-1;
+  }
+  .month-cell-dot {
+    @apply block h-1.5 w-1.5 rounded-full;
+    background-color: rgb(var(--accent-strong) / 0.75);
+  }
+  .month-cell[data-otherMonth="true"] .month-cell-dot {
+    background-color: rgb(var(--text-faint) / 0.45);
+  }
+  .month-cell[data-past="true"]:not([data-today="true"]) .month-cell-dot {
+    background-color: rgb(var(--accent-strong) / 0.45);
+  }
+  .month-cell-dot[data-muted="true"] {
+    background-color: rgb(var(--text-faint) / 0.35);
+  }
+  .month-cell-dots-more {
+    @apply ml-1 text-[10px] font-medium leading-none;
+    color: rgb(var(--text-faint));
+  }
+  /* Booked-share bar — anchored to the cell's bottom edge, exactly one hour-
+     line in weight (1px) plus the inset spacer to feel like a sediment line. */
+  .month-cell-bar {
+    @apply pointer-events-none absolute left-2 bottom-1.5 h-[2px] rounded-full;
+    background-color: rgb(var(--accent) / 0.45);
+    max-width: calc(100% - 1rem);
+  }
+  .month-cell[data-today="true"] .month-cell-bar {
+    background-color: rgb(var(--accent) / 0.7);
+  }
+  .month-cell[data-otherMonth="true"] .month-cell-bar {
+    background-color: rgb(var(--text-faint) / 0.3);
+  }
+
   /* ── Filter-dim ───────────────────────────────────────────────────────────── */
   /* When a label filter is active, non-matching blocks recede to a ghost layer.
      They keep their position (the schedule stays spatially intact) but lose
@@ -845,6 +1040,54 @@
   .composer-labels::placeholder {
     color: rgb(var(--text-faint));
   }
+  /* Composer recurrence row — five quiet pills (once / daily / weekdays /
+     weekly / every N d). Active pill carries a low-opacity accent wash; the
+     "every N d" pill wraps an inline numeric input so the interval reads as
+     part of the same affordance, not a separate field. */
+  .composer-repeat-row {
+    @apply mt-1 flex flex-wrap items-center gap-x-1 gap-y-1 leading-none;
+    color: rgb(var(--text-faint));
+  }
+  .composer-repeat-label {
+    @apply mr-1 text-[10px] font-medium uppercase leading-none;
+    letter-spacing: 0.12em;
+    color: rgb(var(--text-faint));
+  }
+  .composer-repeat-pill {
+    @apply inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+    background-color: transparent;
+    cursor: pointer;
+  }
+  .composer-repeat-pill:hover {
+    color: rgb(var(--text));
+    background-color: rgb(var(--accent) / 0.06);
+  }
+  .composer-repeat-pill[data-active] {
+    color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent) / 0.16);
+  }
+  .composer-repeat-pill[data-active]:hover {
+    background-color: rgb(var(--accent) / 0.22);
+  }
+  .composer-repeat-pill[disabled] {
+    @apply opacity-50;
+  }
+  .composer-repeat-num {
+    @apply w-7 bg-transparent text-center text-[10px] font-medium leading-none outline-none;
+    color: inherit;
+    font-family: var(--font-mono-stack);
+    font-variant-numeric: tabular-nums;
+    /* Suppress the numeric-input spinner so the field reads as a pill, not a control. */
+    -moz-appearance: textfield;
+  }
+  .composer-repeat-num::-webkit-outer-spin-button,
+  .composer-repeat-num::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
   /* Recent-label suggestions sit in the labels-row, visible whenever the row
      has focus-within. Click adds; the row stays open because we capture mousedown. */
   .composer-recent {

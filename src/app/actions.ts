@@ -3,7 +3,12 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createTaskWithBlock } from "@/server/tasks";
-import { deleteBlock, renameBlock, rescheduleBlock } from "@/server/schedule";
+import {
+  deleteBlock,
+  deleteBlockSeriesFrom,
+  renameBlock,
+  rescheduleBlock,
+} from "@/server/schedule";
 import {
   createCheckpoint,
   deleteCheckpoint,
@@ -11,6 +16,7 @@ import {
 } from "@/server/checkpoints";
 import { isoAt } from "@/lib/time";
 import { parseLabelsInput } from "@/lib/labels";
+import type { RecurrenceKind, RecurrenceSpec } from "@/lib/types";
 import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone } from "@/lib/timezone";
 
 async function activeTz(): Promise<string> {
@@ -35,6 +41,25 @@ export interface ActionResult {
 
 const TIME = /^\d{2}:\d{2}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+const VALID_RECURRENCE_KINDS: RecurrenceKind[] = ["daily", "weekdays", "weekly", "interval"];
+
+function parseRecurrence(formData: FormData): { spec: RecurrenceSpec | null; error?: string } {
+  const raw = String(formData.get("recurrence") ?? "").trim();
+  if (!raw || raw === "none") return { spec: null };
+  if (!(VALID_RECURRENCE_KINDS as string[]).includes(raw)) {
+    return { spec: null, error: "Unknown recurrence." };
+  }
+  const kind = raw as RecurrenceKind;
+  if (kind !== "interval") return { spec: { kind } };
+
+  const intRaw = String(formData.get("recurrenceIntervalDays") ?? "").trim();
+  const n = Number(intRaw);
+  if (!Number.isFinite(n) || n < 2 || n > 30) {
+    return { spec: null, error: "Repeat every 2 to 30 days." };
+  }
+  return { spec: { kind, intervalDays: Math.floor(n) } };
+}
 
 /** Create a task and place it on the schedule. Used by the add-task form (useActionState). */
 export async function addTaskAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -62,7 +87,17 @@ export async function addTaskAction(_prev: ActionResult | null, formData: FormDa
 
   const tags = parseLabelsInput(labelsRaw);
 
-  const result = await createTaskWithBlock({ title, estimateMinutes: estimate, startUtc, endUtc, tags });
+  const { spec: recurrence, error: recurrenceErr } = parseRecurrence(formData);
+  if (recurrenceErr) return { ok: false, error: recurrenceErr };
+
+  const result = await createTaskWithBlock({
+    title,
+    estimateMinutes: estimate,
+    startUtc,
+    endUtc,
+    tags,
+    recurrence,
+  });
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath("/");
@@ -81,11 +116,21 @@ export async function rescheduleAction(blockId: string, startUtc: string, endUtc
   return { ok: true };
 }
 
-/** Remove a block from the schedule. */
-export async function deleteBlockAction(blockId: string): Promise<ActionResult> {
+/**
+ * Remove a block from the schedule. `scope` is honored only for blocks that
+ * belong to a recurring series:
+ *   - "occurrence" (default): remove just this one block.
+ *   - "future":               remove this block + every later occurrence in
+ *                             the series; tasks are deleted so no orphans linger.
+ */
+export async function deleteBlockAction(
+  blockId: string,
+  scope: "occurrence" | "future" = "occurrence",
+): Promise<ActionResult> {
   if (!blockId) return { ok: false, error: "Missing block id." };
 
-  const result = await deleteBlock(blockId);
+  const result =
+    scope === "future" ? await deleteBlockSeriesFrom(blockId) : await deleteBlock(blockId);
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath("/");

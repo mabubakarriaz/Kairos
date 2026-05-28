@@ -76,6 +76,43 @@ export function fiveDayWindow(date: string, timeZone: string): { startUtc: strin
   return { startUtc, endUtc };
 }
 
+/** Number of cells rendered in the month view — always 6 weeks for layout stability. */
+export const MONTH_GRID_DAYS = 6 * 7;
+
+/** YYYY-MM-DD of the first day of the calendar month containing `date`. */
+export function monthStart(date: string): string {
+  const d = new Date(`${date}T00:00:00.000Z`);
+  d.setUTCDate(1);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Shift a yyyy-mm-dd date by n calendar months, keeping day-of-month bounded. */
+export function addMonths(date: string, n: number): string {
+  const d = new Date(`${date}T00:00:00.000Z`);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + n);
+  // Clamp day to month-end (e.g. Jan 31 + 1 → Feb 28/29).
+  const lastOfMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastOfMonth));
+  return d.toISOString().slice(0, 10);
+}
+
+/** The 42 YYYY-MM-DD dates in the month grid: Monday before month-start through 6 weeks. */
+export function monthGridDates(date: string): string[] {
+  const first = monthStart(date);
+  const gridStart = mondayOf(first);
+  return Array.from({ length: MONTH_GRID_DAYS }, (_, i) => addDays(gridStart, i));
+}
+
+/** Half-open UTC window covering the full month grid (6 weeks), in zone. */
+export function monthGridWindow(date: string, timeZone: string): { startUtc: string; endUtc: string } {
+  const dates = monthGridDates(date);
+  const startUtc = zonedDayStartUtc(dates[0], timeZone);
+  const endUtc = zonedDayStartUtc(addDays(dates[dates.length - 1], 1), timeZone);
+  return { startUtc, endUtc };
+}
+
 /** Shift a yyyy-mm-dd date by n days. Calendar math — TZ-agnostic. */
 export function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00.000Z`);
@@ -183,9 +220,11 @@ export type BlockTimeState = "past" | "active" | "future";
 /**
  * Time-meta for a block: the time range, plus a single tail that names the
  * block's relationship to *now*:
- *   - past:   "45m"            (duration, ink-faint)
- *   - active: "30m left"       (Ember tail — the now-line lives inside this block)
- *   - future: "in 2h 15m"      (countdown, ink-faint)
+ *   - past:   "45m"                  (duration, ink-faint)
+ *   - active: "30m left"             (Ember tail — the now-line lives inside this block)
+ *   - future: "1h · in 2h 15m"       (duration · countdown, ink-faint) — answers
+ *             both "how long is this?" and "how soon?" without forcing the eye
+ *             back to the range row to subtract end − start.
  * Caller passes `nowMin = null` when the now-line is irrelevant (not today);
  * the block then reads as past (duration only) — fine for past/future days.
  */
@@ -195,21 +234,21 @@ export function blockTimeMeta(args: {
   nowMin: number | null;
 }): { range: string; tail: string; state: BlockTimeState } {
   const range = fmtClockRange(args.startMin, args.endMin);
+  const dur = Math.max(0, args.endMin - args.startMin);
   if (args.nowMin == null) {
-    const dur = Math.max(0, args.endMin - args.startMin);
     return { range, tail: fmtDuration(dur), state: "past" };
   }
   if (args.nowMin >= args.endMin) {
-    const dur = Math.max(0, args.endMin - args.startMin);
     return { range, tail: fmtDuration(dur), state: "past" };
   }
   if (args.nowMin >= args.startMin) {
     const remaining = Math.max(1, Math.ceil(args.endMin - args.nowMin));
     return { range, tail: `${fmtDuration(remaining)} left`, state: "active" };
   }
-  // future
-  const countdown = fmtCountdown(args.startMin - args.nowMin) ?? fmtDuration(0);
-  return { range, tail: countdown, state: "future" };
+  // future — duration first, then countdown.
+  const countdown = fmtCountdown(args.startMin - args.nowMin);
+  const tail = countdown ? `${fmtDuration(dur)} · ${countdown}` : fmtDuration(dur);
+  return { range, tail, state: "future" };
 }
 
 /**

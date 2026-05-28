@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-28T00:00:00Z",
+  "title": "Design System: Kairos",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(96.5% 0.005 75)",
+        "tonalRamp": ["#1f1b14", "#3a3328", "#5c5346", "#796e5f", "#a89b85", "#cfc8b8", "#e6e1d6", "#faf8f4"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Page",
+        "canonical": "oklch(97.5% 0.005 75)",
+        "tonalRamp": ["#1c1814", "#29231c", "#3a3328", "#5c5346", "#a89b85", "#cfc8b8", "#f4f1eb", "#fefdfa"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Walnut Ink",
+        "canonical": "oklch(20% 0.015 70)",
+        "tonalRamp": ["#1f1b14", "#3a3328", "#5c5346", "#796e5f", "#a89b85", "#cfc8b8", "#e6e1d6", "#faf8f4"]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Deep Ochre",
+        "canonical": "oklch(62% 0.10 70)",
+        "tonalRamp": ["#3a2410", "#5c3a1c", "#7a4f24", "#8a5b1e", "#b07a35", "#d9a455", "#eab76a", "#fbf7ee"]
+      },
+      "accent-strong": {
+        "role": "primary",
+        "displayName": "Burnt Ochre",
+        "canonical": "oklch(48% 0.10 65)",
+        "tonalRamp": ["#2a1808", "#3a2410", "#5c3a1c", "#7a4f24", "#8a5b1e", "#b07a35", "#d9a455", "#eab76a"]
+      },
+      "block": {
+        "role": "secondary",
+        "displayName": "Amber Wash",
+        "canonical": "oklch(90% 0.06 80)",
+        "tonalRamp": ["#382c1b", "#4c3c24", "#6a522f", "#8a6b3d", "#b89358", "#d4b27a", "#ebd19e", "#f4e2bb"]
+      },
+      "block-strong": {
+        "role": "secondary",
+        "displayName": "Amber Wash Strong",
+        "canonical": "oklch(86% 0.08 80)",
+        "tonalRamp": ["#382c1b", "#4c3c24", "#6a522f", "#8a6b3d", "#b89358", "#d4b27a", "#ebd19e", "#f4e2bb"]
+      },
+      "free": {
+        "role": "tertiary",
+        "displayName": "Graphite Mist",
+        "canonical": "oklch(56% 0.02 250)",
+        "tonalRamp": ["#1d2129", "#2f343d", "#4d5664", "#6f7989", "#8a93a2", "#afb7c4", "#cdd3dc", "#e6e9ee"]
+      },
+      "free-strong": {
+        "role": "tertiary",
+        "displayName": "Graphite Strong",
+        "canonical": "oklch(45% 0.025 250)",
+        "tonalRamp": ["#1d2129", "#2f343d", "#4d5664", "#6f7989", "#8a93a2", "#afb7c4", "#cdd3dc", "#e6e9ee"]
+      },
+      "now": {
+        "role": "tertiary",
+        "displayName": "Ember",
+        "canonical": "oklch(58% 0.14 35)",
+        "tonalRamp": ["#3a1a10", "#5c2818", "#7a3624", "#9a4732", "#c0543a", "#db7250", "#e8967a", "#f5c4b0"]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(92% 0.008 75)",
+        "tonalRamp": ["#2f2a23", "#494034", "#796e5f", "#a89b85", "#cfc8b8", "#e6e1d6", "#f4f1eb", "#faf8f4"]
+      },
+      "grid-line": {
+        "role": "neutral",
+        "displayName": "Hour Rule",
+        "canonical": "oklch(93% 0.012 75)",
+        "tonalRamp": ["#2f2a23", "#494034", "#796e5f", "#a89b85", "#cfc8b8", "#e8e0ce", "#f4ecd9", "#faf6e8"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The date heading at the top of the day view. Set once per page; never stacked."
+      },
+      "title": {
+        "displayName": "Block Title",
+        "purpose": "The task title inside a time block. Reads as confident inline label, not card heading."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Date subtitle, status line, inline help. Capped at 65-75ch in any long-form region."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Weekday strip in week view, tz chip text. The only place uppercase + wide-tracking is used."
+      },
+      "numerals": {
+        "displayName": "Tabular Numerals",
+        "purpose": "Every numeral on the page rides this style via .num, time, .block-time, .hour-label. Tabular-nums is non-negotiable so columns of times align."
+      }
+    },
+    "shadows": [
+      {
+        "name": "composer-lift",
+        "value": "0 0 0 1px rgba(176, 122, 53, 0.55), 0 10px 28px -8px rgba(24, 18, 12, 0.25)",
+        "purpose": "Resting elevation for the inline composer. Accent ring outlines the active edit zone; soft warm drop shadow gives paper-on-paper lift."
+      },
+      {
+        "name": "drag-lift",
+        "value": "0 1px 0 rgba(24, 18, 12, 0.05), 0 12px 24px -8px rgba(24, 18, 12, 0.30), inset 0 0 0 1px rgba(176, 122, 53, 0.30)",
+        "purpose": "Applied to a block while it is being dragged or resized. The block 'becomes a composer for a moment.'"
+      },
+      {
+        "name": "editing-ring",
+        "value": "0 0 0 1px rgba(176, 122, 53, 0.55)",
+        "purpose": "1px accent outline applied to a block in inline edit mode. No drop shadow; just the ring."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-snap",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Ease-out-quart. Default easing for every transition in the system. No bounce, no elastic, no spring."
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Color and opacity transitions on small chrome (glyph-btn, block-del, resize handle)."
+      },
+      {
+        "name": "duration-base",
+        "value": "200ms",
+        "purpose": "Background, box-shadow, transform on blocks and composer."
+      },
+      {
+        "name": "duration-slow",
+        "value": "220ms",
+        "purpose": "Free-slot opacity reveal during drag-in-flight."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Time Block",
+      "kind": "custom",
+      "refersTo": "block",
+      "description": "The signature surface. Amber-washed rectangle holding a task title and time. Filled-but-quiet at rest; intensifies on hover; lifts on drag.",
+      "html": "<div class=\"ds-block\" role=\"button\" tabindex=\"0\"><div class=\"ds-block-title\">Draft the launch announcement</div><div class=\"ds-block-time\"><span>09:00</span><span class=\"ds-block-time-sep\"> &ndash; </span><span>10:30</span><span class=\"ds-block-time-sep\"> &middot; </span><span>90m</span></div></div>",
+      "css": ".ds-block { position: relative; box-sizing: border-box; padding: 6px 12px; border-radius: 6px; background-color: #f4e2bb; color: #8a5b1e; min-width: 220px; min-height: 56px; cursor: grab; user-select: none; transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-block:hover { background-color: #ebd19e; } .ds-block:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.55); } .ds-block-title { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; line-height: 1.25; letter-spacing: -0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-block-time { margin-top: 2px; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1.25; font-variant-numeric: tabular-nums; color: rgba(138, 91, 30, 0.75); } .ds-block-time-sep { color: rgba(138, 91, 30, 0.45); }"
+    },
+    {
+      "name": "Inline Composer",
+      "kind": "input",
+      "refersTo": "composer",
+      "description": "Click-to-create editor that appears at the clicked time slot. Carries the only resting shadow in the system.",
+      "html": "<div class=\"ds-composer\"><div class=\"ds-composer-row\"><input class=\"ds-composer-title\" placeholder=\"What needs doing?\" value=\"Review the migration plan\" /><input class=\"ds-composer-time-input\" value=\"14:00\" /><span class=\"ds-composer-time-sep\">&ndash;</span><input class=\"ds-composer-time-input\" value=\"15:00\" /></div><div class=\"ds-composer-meta\"><span>60m</span><span>&middot;</span><span>Enter to save</span><span>&middot;</span><span>Esc to cancel</span></div></div>",
+      "css": ".ds-composer { position: relative; box-sizing: border-box; padding: 6px 12px; border-radius: 6px; background-color: #fefdfa; color: #1f1b14; min-width: 280px; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.55), 0 10px 28px -8px rgba(24, 18, 12, 0.25); transition: box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-composer-row { display: flex; align-items: center; gap: 8px; } .ds-composer-title { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #1f1b14; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; line-height: 1.25; letter-spacing: -0.005em; } .ds-composer-title::placeholder { color: #796e5f; font-weight: 500; } .ds-composer-time-input { width: 58px; background: transparent; border: 0; outline: 0; color: #5c5346; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 11px; font-variant-numeric: tabular-nums; } .ds-composer-time-input:focus { color: #1f1b14; } .ds-composer-time-sep { color: #796e5f; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; } .ds-composer-meta { margin-top: 2px; display: flex; align-items: center; gap: 6px; color: #796e5f; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1.25; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Free-Slot Marker",
+      "kind": "custom",
+      "refersTo": "freeslot",
+      "description": "A single 1px dashed top hairline plus a tiny mono timestamp label. The whisper state inside the grid: no fill, no border, no box.",
+      "html": "<div class=\"ds-freeslot\"><span class=\"ds-freeslot-label\">14:00 &middot; 90m</span></div>",
+      "css": ".ds-freeslot { position: relative; box-sizing: border-box; height: 96px; min-width: 220px; border-top: 1px dashed rgba(111, 121, 137, 0.42); opacity: 0.7; transition: opacity 220ms cubic-bezier(0.22, 1, 0.36, 1); pointer-events: none; } .ds-freeslot:hover { opacity: 1; } .ds-freeslot-label { position: absolute; left: 0; top: 4px; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1; letter-spacing: 0.01em; color: rgba(77, 86, 100, 0.85); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Glyph Button",
+      "kind": "button",
+      "refersTo": "glyph-btn",
+      "description": "The chrome atom. 28x28 ghost square holding a stroke-only SVG glyph. Used for prev/today/next, view toggle, theme cycle.",
+      "html": "<button class=\"ds-glyph-btn\" aria-label=\"Next day\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"9 6 15 12 9 18\"></polyline></svg></button>",
+      "css": ".ds-glyph-btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background-color: transparent; color: #796e5f; cursor: pointer; transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1), color 200ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-glyph-btn:hover { background-color: #f4f1eb; color: #1f1b14; } .ds-glyph-btn:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.5), 0 0 0 3px #faf8f4; } .ds-glyph-btn[aria-current=\"true\"] { color: #1f1b14; } .ds-glyph-btn svg { width: 14px; height: 14px; }"
+    },
+    {
+      "name": "TZ Chip",
+      "kind": "chip",
+      "refersTo": "tz-chip",
+      "description": "Text-led button in the corner cluster. Cycles between local tz and UTC on click; same advance-on-click model as the theme glyph.",
+      "html": "<button class=\"ds-tz-chip\" aria-label=\"Toggle timezone\">UTC</button>",
+      "css": ".ds-tz-chip { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 28px; min-width: 40px; padding: 0 8px; border: 0; border-radius: 6px; background-color: transparent; color: #796e5f; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 11px; font-weight: 500; line-height: 1; letter-spacing: 0.06em; cursor: pointer; transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1), color 200ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-tz-chip:hover { background-color: #f4f1eb; color: #1f1b14; } .ds-tz-chip:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.5), 0 0 0 3px #faf8f4; }"
+    },
+    {
+      "name": "Date Display",
+      "kind": "custom",
+      "refersTo": "display",
+      "description": "The date heading at the top of the day view. Single Display-size element on the page; weekday rides as a small uppercase ochre tag baseline-aligned with the date numeral.",
+      "html": "<h1 class=\"ds-date\"><span class=\"ds-date-weekday\">TUE</span><span class=\"ds-date-numeral\">28 May</span></h1><p class=\"ds-date-sub\"><span>Tuesday</span><span class=\"ds-date-dot\">&middot;</span><span>28 May 2026</span><span class=\"ds-date-dot\">&middot;</span><span class=\"ds-date-tz\">UTC</span></p>",
+      "css": ".ds-date { display: flex; align-items: baseline; gap: 12px; margin: 0; color: #1f1b14; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 30px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; } .ds-date-weekday { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; font-weight: 600; line-height: 1; letter-spacing: 0.18em; text-transform: uppercase; color: #8a5b1e; font-variant-numeric: tabular-nums; } .ds-date-numeral { font-variant-numeric: tabular-nums; } .ds-date-sub { margin: 8px 0 0; display: flex; align-items: baseline; gap: 6px; color: #5c5346; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; } .ds-date-sub span { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-variant-numeric: tabular-nums; } .ds-date-dot { color: #796e5f; } .ds-date-tz { margin-left: 8px; font-size: 10px; line-height: 1; text-transform: uppercase; letter-spacing: 0.18em; color: #796e5f; }"
+    },
+    {
+      "name": "Now-Line",
+      "kind": "custom",
+      "refersTo": "now-line",
+      "description": "1px Ember hairline + 6px gutter dot + tiny mono timestamp. Used once per screen; never animated with a transition (the position is the time).",
+      "html": "<div class=\"ds-now-wrap\"><span class=\"ds-now-label\">14:32</span><div class=\"ds-now-line\"></div></div>",
+      "css": ".ds-now-wrap { position: relative; width: 100%; min-height: 16px; padding-left: 48px; box-sizing: border-box; } .ds-now-line { position: absolute; left: 48px; right: 4px; top: 8px; height: 1px; background: #c0543a; } .ds-now-line::before { content: ''; position: absolute; left: -6px; top: -3px; width: 6px; height: 6px; border-radius: 9999px; background: #c0543a; } .ds-now-label { position: absolute; left: 0; top: 0; width: 48px; padding-right: 12px; text-align: right; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1; font-weight: 600; letter-spacing: 0.02em; color: #c0543a; font-variant-numeric: tabular-nums; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Wood Desk",
+    "overview": "Kairos is the single object on a writer's desk: a paper day-sheet ruled in faint hour lines, with hand-laid blocks of ochre marking the work, a graphite whisper for what's free, and a single red-ochre mark for now. The whole interface is composed as one canvas, not a SaaS surface. There is no header bar, no sidebar, no nav rail. The day grid is the hero; date label, status line, and corner controls are staff serving it. Personality lives in micro-detail: how a block lifts under the pointer, how a free slot reveals itself as a dashed hairline, how every numeral is set in tabular mono so times line up like a printed timetable. The system commits to two first-class scenes rather than treating dark as a tint-inverted afterthought. Light is morning at a wood desk, late-spring light, paper feel: warm near-white surfaces with deep amber blocks and graphite-cool free slots. Dark is 11:30pm planning in a dim room with candle warmth: warm near-black surfaces with brighter ochre blocks and slightly cooler graphite. Neither scene apologizes for its temperature. Both refuse blue. Color is a scalpel, not a paintbrush. The system uses tinted neutrals plus one accent (ochre amber) under a roughly Restrained strategy, exceeded only inside the time block itself, which is the only surface that wears a saturated wash. Type and position carry the rest.",
+    "keyCharacteristics": [
+      "Single-canvas composition. No side panels, no chrome around the grid.",
+      "Two first-class themes. Light and dark are scene-composed, not inverted.",
+      "Amber + graphite + red-ochre. Three named chromatic roles. Never blue, never emerald.",
+      "Mono numerals everywhere. Every time, duration, hour, and date rides JetBrains Mono with tabular-nums.",
+      "Quiet on rest, expressive on touch. Static views feel typographic. Personality lives in interaction.",
+      "No cards. Time blocks are filled rectangles; the canvas itself is the container.",
+      "Hairlines for grid and free slots. 1px lines do the structural work; no boxes, no shadows at rest."
+    ],
+    "rules": [
+      { "name": "The Ochre-or-Nothing Rule", "body": "The single chromatic accent on any chrome (date, controls, focus, ring, link) is Deep Ochre or Burnt Ochre. Never blue, never emerald, never violet. If a surface needs to feel 'active' or 'available', use type weight, position, or hairline density. The block is the only surface allowed to wear a saturated wash.", "section": "colors" },
+      { "name": "The Graphite-Not-Emerald Rule", "body": "Free slots and 'available time' signage are graphite, never green. Green is the reflexive choice; refusing it is the point. Graphite recedes, which is what a free slot is: an absence of work, not a celebration.", "section": "colors" },
+      { "name": "The One Ember Rule", "body": "Red-ochre #c0543a is used twice maximum per screen: once on the now-line, optionally once on the 'X left' tail. Never on errors, never on delete, never on warnings. A second Ember mark on screen dilutes the meaning of the first.", "section": "colors" },
+      { "name": "The Warm-Neutral Rule", "body": "Every neutral is tinted toward warm (chroma ~0.005). #000 and #fff are forbidden. Slate, cool grey, and 'Tailwind zinc' are forbidden. The palette's temperature is the brand.", "section": "colors" },
+      { "name": "The Tabular-Numeral Rule", "body": "Any numeral that names a quantity of time (hours, minutes, durations, dates, counts) is set in JetBrains Mono with tabular-nums. Every such element carries .num or time or .block-time or .hour-label. Inter is forbidden for numerals.", "section": "typography" },
+      { "name": "The Tight-Track Rule", "body": "Display and title type are tracked tighter than the Inter default (-0.02em for display, -0.005em for title). Labels and numerals are tracked looser (+0.02 to +0.12em). Never flat-track everything; the contrast in tracking is part of the hierarchy.", "section": "typography" },
+      { "name": "The Single-Display Rule", "body": "Only one element on screen sets in Display size: the date. Headlines do not stack. If a second display-size element appears, demote one.", "section": "typography" },
+      { "name": "The Flat-At-Rest Rule", "body": "Blocks, free slots, hour labels, status lines, and toolbar buttons cast no shadow at rest. The grid is a flat ruled page. Adding a resting shadow to the block ('for depth') is forbidden; it would make the block read as a card, which it isn't.", "section": "elevation" },
+      { "name": "The Shadow-Means-State Rule", "body": "Every shadow in the system signifies an interactive state (dragging, resizing, editing, composing). A shadow is never decorative. If a surface needs to read as elevated without state, restate it with warmth contrast or a hairline, not with a shadow.", "section": "elevation" },
+      { "name": "The Warm-Shadow Rule", "body": "Shadow ink is --shadow: 24 18 12 (light) or 0 0 0 (dark, where the canvas is already deep), never a cool grey-blue. Cool-blue drop shadow against warm paper is the SaaS-template tell.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Deep Ochre (#b07a35) or Burnt Ochre (#8a5b1e) for every chromatic chrome accent. The accent is fixed.",
+      "Do set every numeral in JetBrains Mono with font-variant-numeric: tabular-nums via .num, time, .block-time, or .hour-label. Times that wobble across columns are a bug.",
+      "Do keep blocks flat at rest. Lift only with hover (chromatic), drag (Drag Lift shadow), or edit (Editing Ring outline).",
+      "Do show free time as a 1px dashed Graphite Mist hairline with a tiny mono timestamp. No fill, no box.",
+      "Do compose two first-class scenes. Both light and dark have their own resting palette; if dark looks like light with the lightness inverted, redo it.",
+      "Do use the warm scene-shadow --shadow: 24 18 12 for elevation in light mode. Cool grey-blue shadow is the SaaS-template tell.",
+      "Do use ease-snap (cubic-bezier(0.22, 1, 0.36, 1), ease-out-quart) for all transitions. State transitions only; never animate layout properties.",
+      "Do keep the corner cluster (tz chip + theme glyph) fixed at top-right. The app has no header bar; the corner glyph IS the chrome.",
+      "Do honor prefers-reduced-motion. The reduce-motion query strips all transition durations to 1ms.",
+      "Do cap body line length at 65-75ch in any long-form copy region."
+    ],
+    "donts": [
+      "Don't reintroduce the generic SaaS / Next.js-template look (soft slate + blue accent + rounded cards). The redesign existed to escape it.",
+      "Don't clone Notion-Calendar or Cron at the surface level. Borrow the rigor, not the look.",
+      "Don't use the 'productivity dashboard' aesthetic: big number tiles, progress rings, streak counters, dopamine-loop UI. Kairos is not a habit tracker.",
+      "Don't add decorative AI-era flourishes: gradient text, glassmorphism, neon-on-black, animated mesh gradients, the hero-metric template, side-stripe alert cards. All explicitly banned.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe. Side-stripe borders are a hard ban.",
+      "Don't use background-clip: text on a gradient. Single solid colors only.",
+      "Don't use glassmorphism, backdrop-blur, or frosted-glass surfaces as a default. Rare and purposeful, or nothing.",
+      "Don't use #000, #fff, or any neutral that isn't warm-tinted. Slate, cool grey, and Tailwind zinc are forbidden.",
+      "Don't introduce blue, teal, emerald, violet, or any color outside the amber + graphite + red-ochre triad.",
+      "Don't wrap surfaces in cards. The canvas is the container. Nested cards are always wrong.",
+      "Don't add a top app-bar, sidebar, or nav rail. The corner glyphs and date heading are the whole shell.",
+      "Don't animate layout properties (width, height, top, left, margin). Use transform and opacity.",
+      "Don't add modal dialogs. The composer is inline. Delete is immediate.",
+      "Don't add a 'productivity dashboard' header zone above the grid. The grid is the page.",
+      "Don't use em dashes in any user-visible copy. Use commas, colons, semicolons, periods, or parentheses.",
+      "Don't use the flat, equal-weight hierarchy of everything competing for attention at the same scale. The day grid is the hero; everything else is staff."
+    ]
+  }
+}

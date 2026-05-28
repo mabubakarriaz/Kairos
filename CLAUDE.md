@@ -61,10 +61,16 @@ docs/                  # SUPABASE_SETUP, VERCEL_SETUP, DEPLOYMENT
 - **Secrets never enter git (the repo is public).** Runtime secrets live in Vercel
   env vars; deploy credentials live in GitHub Actions secrets. `.env.local` is
   gitignored. See `docs/DEPLOYMENT.md` for the split.
-- **Schema is code.** Change the DB only via a new file in `supabase/migrations/`.
-  Keep migrations idempotent (guard with `if not exists` / `create or replace`) so
-  they're safe to re-run and to paste into the SQL editor. RLS stays **on** with no
-  policies.
+- **Schema is code, and migrations are non-destructive by default.** Change the DB
+  only via a new file in `supabase/migrations/` — never edit one already on `main`,
+  always forward-only. Every migration must be idempotent (`create table if not
+  exists` / `create or replace`) and must not touch existing rows. CI runs a
+  destructive-SQL guard before `supabase db push`; `DROP TABLE`, `TRUNCATE`,
+  `DELETE FROM`, and `ALTER TABLE … DROP …` fail the deploy unless the file opts
+  in with `-- SAFETY: destructive (reason: …)`. See
+  [`supabase/migrations/README.md`](supabase/migrations/README.md) for the full
+  contract, the template, and the two-deploy pattern for column renames. RLS
+  stays **on** with no policies.
 - **No-overlap is a DB constraint, not app logic.** The `scheduled_blocks_no_overlap`
   EXCLUDE constraint enforces it; `23P01` surfaces as "that time overlaps another
   block." Don't re-check overlap in TS.

@@ -1,6 +1,10 @@
 -- Optional demo data so the schedule isn't empty on first load.
--- Run manually in the Supabase SQL editor if you want it; not applied automatically.
--- Idempotent (fixed ids + ON CONFLICT), so re-running is a no-op.
+--
+-- NOT applied by the deploy. `supabase db push` ignores seed.sql; it only runs on
+-- `supabase db reset` (local) or with an explicit `--include-seed` flag, neither
+-- of which CI uses. Run this manually in the Supabase SQL editor if you want it.
+--
+-- Idempotent (fixed ids + ON CONFLICT), so re-running is a no-op against existing rows.
 
 insert into public.tasks (id, title, estimate_minutes)
 values ('00000000-0000-0000-0000-000000000001', 'Write the Kairos design doc', 60)

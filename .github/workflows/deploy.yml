@@ -29,6 +29,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pre-flight safety gate. A bad migration is the only way the `migrate` job
+      # could ever drop a user's data, so we refuse to deploy if anyone slipped a
+      # destructive statement into supabase/migrations/ without explicitly opting
+      # in. To run a destructive migration intentionally, add a line of the form
+      #   -- SAFETY: destructive (reason: <one-line justification>)
+      # to that migration file. The grep below ignores commented-out occurrences.
+      - name: Guard against destructive SQL in migrations
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No migration files. Skipping guard."
+            exit 0
+          fi
+          # Strip line comments before scanning, so banned keywords inside `--`
+          # comments don't trip the guard.
+          banned='\b(drop[[:space:]]+(table|schema|database|owned|type|function|view|materialized[[:space:]]+view|index|extension|policy|trigger|role)|truncate|delete[[:space:]]+from|alter[[:space:]]+table[[:space:]]+[^;]*drop[[:space:]]+(column|constraint))\b'
+          failed=0
+          for f in "${files[@]}"; do
+            scrubbed=$(sed -E 's/--.*$//' "$f")
+            if echo "$scrubbed" | grep -Eiq "$banned"; then
+              if grep -Eiq '^\s*--\s*SAFETY:\s*destructive\b' "$f"; then
+                echo "::warning file=$f::Destructive SQL present but opted in via SAFETY annotation."
+              else
+                echo "::error file=$f::Destructive SQL detected (DROP/TRUNCATE/DELETE FROM/ALTER … DROP). Add a '-- SAFETY: destructive (reason: …)' line at the top of the file if this is intentional."
+                failed=1
+              fi
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "Refusing to deploy: destructive migration without explicit SAFETY opt-in."
+            exit 1
+          fi
+          echo "Migration safety guard passed (${#files[@]} file(s) scanned)."
+
       - uses: supabase/setup-cli@v1
         with:
           # Pin an exact version: `latest` resolves via the GitHub API and gets
@@ -41,8 +77,17 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
+          set -euo pipefail
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push
+          # Log first so a future "where did my data go" question is answerable
+          # from the Actions log — dry-run prints which migrations would apply
+          # without touching the DB. `-y` keeps it non-interactive.
+          echo "── Pending migrations (dry run) ─────────────────────────"
+          supabase db push --dry-run --linked || true
+          echo "── Applying migrations ──────────────────────────────────"
+          # NOTE: we deliberately do NOT pass --include-seed or --include-roles.
+          # seed.sql is for local `supabase db reset` only — never for prod.
+          supabase db push --linked -y
 
   # 2) Build and deploy the Next.js app to Vercel (production).
   deploy:

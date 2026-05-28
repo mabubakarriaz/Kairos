@@ -28,12 +28,13 @@ Calendar sync. They were deliberately removed.
 ```
 src/
   app/
-    layout.tsx        # root layout, flash-free theme init, header + ThemeToggle
+    layout.tsx        # root layout, flash-free theme init, next/font, ThemeToggle
     page.tsx          # the day view (Server Component): reads ?date, fetches, renders
     actions.ts        # "use server" — addTask / reschedule / deleteBlock + validation
     globals.css       # design tokens (two themes) + component classes
-  components/          # client components: DayColumn (drag island), AddTaskForm,
-                       #   FreeSlotsPanel, DateToolbar, ThemeToggle
+  components/          # client components: DayColumn (single canvas: grid, blocks,
+                       #   free-slot ghosts, status line, drag island), InlineComposer
+                       #   (click-to-create editor), DateToolbar, ThemeToggle
   lib/
     supabase.ts        # server-only, lazy service-role client (getSupabase())
     time.ts            # UTC day-window + grid math (PX_PER_MIN, snapMinutes, …)

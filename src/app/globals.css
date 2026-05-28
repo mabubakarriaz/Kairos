@@ -3,230 +3,337 @@
 @tailwind utilities;
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Design tokens. One semantic set, two themes. Tailwind colors (tailwind.config.ts)
-   resolve to these variables, and the component layer below reads them directly,
-   so flipping `.dark` on <html> re-themes the whole app in one stroke.
-   Values are space-separated RGB triplets so `rgb(var(--x) / <alpha>)` works.
+   Two themes, both composed first-class (neither is a tint-inverted afterthought).
+   Light scene: morning at a wood desk, late-spring light, the schedule reads like a page.
+   Dark scene: late-evening planning, dim room, single monitor, blocks settle quietly.
+   Tokens are space-separated RGB triplets so `rgb(var(--x) / <alpha>)` keeps working.
    ───────────────────────────────────────────────────────────────────────────── */
 @layer base {
   :root {
     color-scheme: light;
 
-    --bg: 246 247 249;
-    --surface: 255 255 255;
-    --surface-2: 244 246 249;
+    /* Surfaces — warm paper, faintly amber-tinted neutrals */
+    --bg: 250 248 244;
+    --surface: 254 253 250;
+    --surface-2: 244 241 235;
 
-    --border: 226 231 239;
-    --border-strong: 203 213 225;
+    --border: 230 225 214;
+    --border-strong: 207 200 184;
 
-    --text: 17 24 39;
-    --text-muted: 71 85 105; /* slate-600 — ≥4.5:1 on the off-white canvas */
-    --text-faint: 90 104 126; /* mid-slate — passes AA on surface & raised */
+    /* Type — warm near-black down through muted then faint */
+    --text: 31 27 20;
+    --text-muted: 92 83 70;
+    --text-faint: 121 110 95;
 
-    --accent: 37 99 235; /* blue-600 — Kairos task blocks */
-    --accent-strong: 29 78 216; /* blue-700 — block text / hover */
-    --accent-fg: 255 255 255;
+    /* Accent — deep low-chroma amber/ochre. The single chromatic kick. */
+    --accent: 176 122 53;
+    --accent-strong: 138 91 30;
+    --accent-fg: 251 247 238;
 
-    --free: 16 185 129; /* emerald-500 — open slots */
-    --free-strong: 4 120 87;
+    /* Block fill — warm amber wash on paper. Text rides on --accent-strong. */
+    --block: 244 226 187;
+    --block-strong: 235 209 158;
 
-    --now: 239 68 68; /* red-500 — current-time line */
+    /* "Free" — cool low-chroma graphite. Refused: emerald. */
+    --free: 111 121 137;
+    --free-strong: 77 86 100;
 
-    --grid-minor: 241 245 249;
-    --grid-major: 226 232 240;
+    /* Now — desaturated red-ochre. Used once, sparingly. */
+    --now: 192 84 58;
 
-    --shadow: 15 23 42;
+    /* Grid hairlines at the hour. No minor lines. */
+    --grid-line: 232 224 206;
+
+    /* Shadow base — warm black */
+    --shadow: 24 18 12;
   }
 
   .dark {
     color-scheme: dark;
 
-    --bg: 13 17 23; /* deep slate canvas, faintly blue */
-    --surface: 22 27 34;
-    --surface-2: 30 36 46;
+    --bg: 20 17 13;
+    --surface: 28 24 20;
+    --surface-2: 41 35 28;
 
-    --border: 42 50 63;
-    --border-strong: 58 68 84;
+    --border: 47 42 35;
+    --border-strong: 73 64 52;
 
-    --text: 226 232 240;
-    --text-muted: 148 163 184;
-    --text-faint: 130 144 166; /* lifted off slate-500 to clear 4.5:1 on dark */
+    --text: 236 228 210;
+    --text-muted: 178 166 144;
+    --text-faint: 130 120 103;
 
-    --accent: 96 165 250; /* blue-400 — brighter to carry on dark */
-    --accent-strong: 147 197 253; /* blue-300 */
-    --accent-fg: 9 14 24;
+    --accent: 217 164 85;
+    --accent-strong: 234 183 106;
+    --accent-fg: 20 17 13;
 
-    --free: 52 211 153; /* emerald-400 */
-    --free-strong: 110 231 183;
+    --block: 56 44 27;
+    --block-strong: 76 60 36;
 
-    --now: 248 113 113; /* red-400 */
+    --free: 138 147 162;
+    --free-strong: 175 183 196;
 
-    --grid-minor: 28 34 44;
-    --grid-major: 42 50 63;
+    --now: 219 114 80;
+
+    --grid-line: 41 35 28;
 
     --shadow: 0 0 0;
   }
 
+  /* OS preference applies only when the user hasn't explicitly chosen. The inline
+     script in layout.tsx flips .dark before paint based on localStorage. */
+
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "ss02", "cv11";
   }
 
   body {
     @apply bg-canvas text-ink;
+    font-family: var(--font-sans, ui-sans-serif), system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  /* Every numeral on the page is tabular and mono. Times, durations, hours, dates. */
+  .num,
+  .tabular,
+  time,
+  .block-time,
+  .hour-label {
+    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "ss01";
+  }
+
+  /* Honor reduced-motion globally — drag still functions, but the choreography dies. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer components {
-  /* ── App chrome ──────────────────────────────────────────────────────────── */
-  .card {
-    @apply rounded-2xl border border-hairline bg-surface shadow-card;
+  /* ── App chrome — minimal. Just two atoms: glyph-button and quiet status line. */
+  .glyph-btn {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-faint;
+    @apply transition-colors duration-200 ease-snap;
+    @apply hover:bg-raised hover:text-ink;
+    @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas;
+  }
+  .glyph-btn[aria-current="true"] {
+    @apply text-ink;
   }
 
-  .seg {
-    @apply inline-flex items-center rounded-xl border border-hairline bg-surface p-0.5 shadow-card;
+  /* Status line at the bottom of the schedule. Single typographic row. */
+  .status-line {
+    @apply flex items-center justify-between gap-4 px-1 py-2 text-xs leading-none text-ink-faint;
+    border-top: 1px solid rgb(var(--border));
   }
-  .seg-btn {
-    @apply inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-3 text-sm font-medium text-ink-muted;
-    @apply transition-colors duration-150 hover:bg-raised hover:text-ink;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
+  .status-line button {
+    @apply inline-flex items-center gap-2 rounded-sm px-1 py-1 text-ink-muted;
+    @apply transition-colors duration-150 ease-snap;
+    @apply hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/50;
   }
-
-  .pill {
-    @apply inline-flex items-center rounded-md bg-raised px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-faint ring-1 ring-hairline;
-  }
-  .pill-today {
-    @apply inline-flex items-center rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-strong ring-1 ring-accent/20;
-  }
-
-  .theme-toggle {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl border border-hairline bg-surface text-ink-muted shadow-card;
-    @apply transition-colors duration-150 hover:bg-raised hover:text-ink;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
+  .status-line .free-mark::before {
+    content: "";
+    @apply mr-2 inline-block h-px w-3 align-middle;
+    background-image: linear-gradient(to right, rgb(var(--free) / 0.7) 50%, transparent 50%);
+    background-size: 4px 1px;
   }
 
-  /* ── Form primitives ─────────────────────────────────────────────────────── */
-  .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-sm font-semibold text-accent-fg shadow-block;
-    @apply transition-all duration-150 ease-snap hover:bg-accent-strong hover:shadow-lift active:scale-[0.98] disabled:opacity-50 disabled:shadow-none;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
-  }
-  .field {
-    @apply rounded-lg border border-hairline bg-raised px-2.5 py-2 text-sm text-ink placeholder:text-ink-faint;
-    @apply transition-colors duration-150 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
-  }
-  .label {
-    @apply mb-1 block text-xs font-medium text-ink-muted;
-  }
-
-  /* ── The day grid (vertical 15-min grid) ─────────────────────────────────── */
-  /* 96px/hour → 1.6px/min; a 15-min slot ≈ 24px. JS positions blocks in these px. */
+  /* ── The day grid ─────────────────────────────────────────────────────────── */
+  /* 96 px / hour → 1.6 px / min. 15-min slot ≈ 24px. JS positions in these px. */
   .day-grid {
     position: relative;
-    @apply overflow-hidden rounded-2xl border border-hairline bg-surface shadow-card;
-    background-image:
-      repeating-linear-gradient(to bottom, rgb(var(--grid-minor)) 0 1px, transparent 1px 24px),
-      repeating-linear-gradient(to bottom, rgb(var(--grid-major)) 0 1px, transparent 1px 96px);
+    /* Just hour hairlines. No minor gridlines. The 15-min snap lives in JS. */
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgb(var(--grid-line)) 0 1px,
+      transparent 1px 96px
+    );
   }
 
-  /* A positioned time block. Tinted fill + saturated left rail + colored text. */
+  /* Hour gutter — left rail with the hour labels. */
+  .hour-label {
+    @apply absolute left-0 w-12 -translate-y-1/2 pr-3 text-right text-[10px] font-medium text-ink-faint;
+    letter-spacing: 0.02em;
+  }
+
+  /* Click-to-create catcher — sits behind blocks, captures empty-space pointer */
+  .grid-catcher {
+    @apply absolute left-12 right-1 top-0 bottom-0 cursor-cell;
+  }
+
+  /* ── Time blocks — filled-but-quiet. No left-stripe. No outline. */
   .block {
-    @apply absolute left-16 right-3 overflow-hidden rounded-lg px-2.5 py-1 shadow-block select-none;
-    @apply transition-shadow duration-150 ease-snap;
-    border-left: 3px solid transparent;
+    @apply absolute left-12 right-1 overflow-hidden rounded-md px-3 py-1.5 select-none;
+    @apply transition-[box-shadow,opacity,transform] duration-200 ease-snap;
+    background-color: rgb(var(--block));
+    color: rgb(var(--accent-strong));
     touch-action: none;
+    box-shadow: 0 0 0 0 rgb(var(--shadow) / 0);
   }
   .block:hover {
-    @apply shadow-lift;
+    background-color: rgb(var(--block-strong));
     z-index: 15;
   }
   .block-kairos {
     @apply cursor-grab;
-    background-color: rgb(var(--accent) / 0.14);
-    border-left-color: rgb(var(--accent));
-    color: rgb(var(--accent-strong));
-  }
-  .block-kairos:hover {
-    background-color: rgb(var(--accent) / 0.22);
   }
   .block-dragging {
-    @apply cursor-grabbing shadow-lift;
+    @apply cursor-grabbing;
     z-index: 30;
+    box-shadow:
+      0 1px 0 rgb(var(--shadow) / 0.05),
+      0 12px 24px -8px rgb(var(--shadow) / 0.30),
+      0 0 0 1px rgb(var(--accent) / 0.30) inset;
+    background-color: rgb(var(--block-strong));
   }
   .block-pending {
     @apply opacity-60;
   }
   .block-title {
-    @apply truncate text-xs font-semibold leading-tight;
+    @apply truncate text-[13px] font-semibold leading-tight;
+    letter-spacing: -0.005em;
   }
   .block-time {
-    @apply truncate text-[10px] font-medium;
+    @apply mt-0.5 truncate text-[10px] leading-tight;
+    color: rgb(var(--accent-strong) / 0.75);
   }
-  /* Hidden via opacity (not display) so it stays in the tab order and reachable
-     by keyboard; revealed on hover, focus-within, and always on touch. */
   .block-del {
-    @apply absolute right-1.5 top-1 flex h-6 w-6 items-center justify-center rounded-md text-current opacity-0;
-    @apply transition-opacity duration-150 hover:bg-accent/20;
-    @apply focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50;
+    @apply absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-sm opacity-0;
+    @apply transition-opacity duration-150;
+    color: rgb(var(--accent-strong) / 0.75);
+  }
+  .block-del:hover {
+    background-color: rgb(var(--accent) / 0.18);
+    color: rgb(var(--accent-strong));
   }
   .block:hover .block-del,
   .block:focus-within .block-del {
-    @apply opacity-100;
+    opacity: 1;
   }
   @media (hover: none) {
     .block-del {
-      @apply opacity-100;
+      opacity: 1;
     }
   }
 
-  /* Dashed ghost marking a free gap in the grid. */
-  .freeslot {
-    @apply absolute left-16 right-3 flex items-start justify-center rounded-lg pt-0.5 text-[10px] font-medium;
-    border: 1.5px dashed rgb(var(--free) / 0.55);
-    background-color: rgb(var(--free) / 0.07);
-    color: rgb(var(--free-strong));
+  /* Drag-source dim — applied to the grid root while a drag is in flight. */
+  .grid-dragging .block:not(.block-dragging) {
+    opacity: 0.78;
+  }
+  .grid-dragging .freeslot {
+    opacity: 1;
   }
 
-  /* Current-time line. */
+  /* ── Free slots — inline whisper states inside the grid. No fill, top hairline. */
+  .freeslot {
+    @apply absolute left-12 right-1 select-none;
+    pointer-events: none;
+    border-top: 1px dashed rgb(var(--free) / 0.42);
+    opacity: 0.7;
+    transition: opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .freeslot-label {
+    @apply absolute left-0 top-1 text-[10px] leading-none;
+    color: rgb(var(--free-strong) / 0.85);
+    letter-spacing: 0.01em;
+  }
+
+  /* ── Now-line — hairline + tiny dot in the gutter + tiny mono timestamp. */
   .now-line {
-    @apply pointer-events-none absolute left-14 right-2 z-20;
-    height: 2px;
+    @apply pointer-events-none absolute left-12 right-1 z-20;
+    height: 1px;
     background: rgb(var(--now));
   }
   .now-line::before {
     content: "";
-    @apply absolute -left-1.5 h-2.5 w-2.5 rounded-full;
-    top: -4px;
+    @apply absolute -left-1.5 h-1.5 w-1.5 rounded-full;
+    top: -3px;
     background: rgb(var(--now));
-    box-shadow: 0 0 0 4px rgb(var(--now) / 0.18);
+  }
+  .now-label {
+    @apply absolute left-0 w-12 -translate-y-1/2 pr-3 text-right text-[10px] font-semibold;
+    color: rgb(var(--now));
+    letter-spacing: 0.02em;
   }
 
-  .hour-label {
-    @apply absolute left-0 w-14 -translate-y-1/2 pr-2.5 text-right text-[10px] font-medium tabular-nums text-ink-faint;
+  /* ── Inline composer — appears at the clicked slot. Replaces the old card form. */
+  .composer {
+    @apply absolute left-12 right-1 overflow-hidden rounded-md px-3 py-1.5;
+    @apply transition-[box-shadow] duration-200 ease-snap;
+    background-color: rgb(var(--surface));
+    color: rgb(var(--text));
+    box-shadow:
+      0 0 0 1px rgb(var(--accent) / 0.55),
+      0 10px 28px -8px rgb(var(--shadow) / 0.25);
+    z-index: 40;
+  }
+  .composer-row {
+    @apply flex items-center gap-2;
+  }
+  .composer-title {
+    @apply min-w-0 flex-1 bg-transparent text-[13px] font-semibold leading-tight outline-none;
+    color: rgb(var(--text));
+    letter-spacing: -0.005em;
+  }
+  .composer-title::placeholder {
+    color: rgb(var(--text-faint));
+    font-weight: 500;
+  }
+  .composer-time-input {
+    @apply w-[58px] bg-transparent text-[11px] outline-none;
+    color: rgb(var(--text-muted));
+    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .composer-time-input:focus {
+    color: rgb(var(--text));
+  }
+  .composer-meta {
+    @apply mt-0.5 flex items-center gap-1.5 text-[10px] leading-tight;
+    color: rgb(var(--text-faint));
+    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .composer-error {
+    color: rgb(var(--now));
   }
 
-  /* ── Free-slots side panel (clickable suggestions) ───────────────────────── */
-  .freeslot-chip {
-    @apply flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs;
-    @apply transition-all duration-150 ease-snap cursor-pointer;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-free/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
-    border-color: rgb(var(--free) / 0.35);
-    background-color: rgb(var(--free) / 0.08);
-    color: rgb(var(--free-strong));
+  /* ── Empty-day prompt — typographic line, sits in the grid */
+  .empty-line {
+    @apply absolute left-12 right-1 flex flex-col items-center justify-center text-center;
+    color: rgb(var(--text-muted));
   }
-  .freeslot-chip:hover {
-    border-color: rgb(var(--free) / 0.6);
-    background-color: rgb(var(--free) / 0.16);
-    @apply -translate-y-px shadow-card;
+  .empty-headline {
+    @apply text-base font-medium;
+    color: rgb(var(--text));
+    letter-spacing: -0.005em;
+  }
+  .empty-sub {
+    @apply mt-1 text-xs;
+  }
+  .empty-sub kbd {
+    @apply inline-block rounded border px-1 py-px font-mono text-[10px] leading-none;
+    border-color: rgb(var(--border-strong));
+    background-color: rgb(var(--surface));
+    color: rgb(var(--text-muted));
+    font-family: var(--font-mono, ui-monospace), "JetBrains Mono", "SF Mono", Consolas, monospace;
   }
 
-  /* Thin, themed scrollbar for the schedule scroll area. */
+  /* ── Thin themed scrollbar for the schedule scroll area. */
   .scroll-area {
     scrollbar-width: thin;
     scrollbar-color: rgb(var(--border-strong)) transparent;
   }
   .scroll-area::-webkit-scrollbar {
-    width: 10px;
+    width: 8px;
   }
   .scroll-area::-webkit-scrollbar-track {
     background: transparent;
@@ -234,7 +341,7 @@
   .scroll-area::-webkit-scrollbar-thumb {
     background-color: rgb(var(--border-strong));
     border-radius: 9999px;
-    border: 3px solid transparent;
+    border: 2px solid transparent;
     background-clip: content-box;
   }
 }

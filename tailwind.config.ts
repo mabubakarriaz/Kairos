@@ -1,10 +1,9 @@
 import type { Config } from "tailwindcss";
 
 /**
- * One semantic color set, two themes. Every color resolves to a CSS variable
- * defined in `src/app/globals.css` (`:root` + `.dark`), so flipping the `.dark`
- * class on <html> re-themes the whole app. RGB triplets keep `<alpha-value>`
- * working (e.g. `bg-accent/20`).
+ * One semantic color set, two first-class themes. Every color resolves to a CSS
+ * variable defined in `src/app/globals.css` (`:root` + `.dark`). RGB triplets
+ * keep `<alpha-value>` working (`bg-accent/20`, `ring-accent/50`).
  */
 export default {
   darkMode: "class",
@@ -23,16 +22,18 @@ export default {
         accent: "rgb(var(--accent) / <alpha-value>)",
         "accent-strong": "rgb(var(--accent-strong) / <alpha-value>)",
         "accent-fg": "rgb(var(--accent-fg) / <alpha-value>)",
+        block: "rgb(var(--block) / <alpha-value>)",
+        "block-strong": "rgb(var(--block-strong) / <alpha-value>)",
         free: "rgb(var(--free) / <alpha-value>)",
         "free-strong": "rgb(var(--free-strong) / <alpha-value>)",
         now: "rgb(var(--now) / <alpha-value>)",
       },
-      boxShadow: {
-        card: "0 1px 2px rgb(var(--shadow) / 0.06), 0 1px 3px rgb(var(--shadow) / 0.08)",
-        block: "0 1px 2px rgb(var(--shadow) / 0.10)",
-        lift: "0 10px 30px rgb(var(--shadow) / 0.18)",
+      fontFamily: {
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "JetBrains Mono", "Consolas", "monospace"],
       },
       transitionTimingFunction: {
+        // Ease-out-quart. Mechanical, no bounce, no elastic.
         snap: "cubic-bezier(0.22, 1, 0.36, 1)",
       },
     },

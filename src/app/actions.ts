@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createTaskWithBlock } from "@/server/tasks";
 import { deleteBlock, renameBlock, rescheduleBlock } from "@/server/schedule";
 import { isoAt } from "@/lib/time";
+import { parseLabelsInput } from "@/lib/labels";
 import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone } from "@/lib/timezone";
 
 async function activeTz(): Promise<string> {
@@ -37,6 +38,7 @@ export async function addTaskAction(_prev: ActionResult | null, formData: FormDa
   const startTime = String(formData.get("startTime") ?? "");
   const endTime = String(formData.get("endTime") ?? "");
   const estimateRaw = String(formData.get("estimateMinutes") ?? "").trim();
+  const labelsRaw = String(formData.get("labels") ?? "");
 
   if (!title) return { ok: false, error: "Title is required." };
   if (!DATE.test(date)) return { ok: false, error: "Invalid date." };
@@ -53,7 +55,9 @@ export async function addTaskAction(_prev: ActionResult | null, formData: FormDa
     if (!Number.isFinite(estimate) || estimate < 1) return { ok: false, error: "Estimate must be a positive number." };
   }
 
-  const result = await createTaskWithBlock({ title, estimateMinutes: estimate, startUtc, endUtc });
+  const tags = parseLabelsInput(labelsRaw);
+
+  const result = await createTaskWithBlock({ title, estimateMinutes: estimate, startUtc, endUtc, tags });
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath("/");

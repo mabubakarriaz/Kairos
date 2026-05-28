@@ -2,19 +2,29 @@ import "server-only";
 import { getSupabase } from "@/lib/supabase";
 import type { ScheduledBlock } from "@/lib/types";
 
+type TaskJoin = { title: string; tags: string[] | null };
+
 interface BlockRow {
   id: string;
   task_id: string | null;
   source: "kairos" | "gcal";
   start_utc: string;
   end_utc: string;
-  tasks: { title: string } | { title: string }[] | null;
+  tasks: TaskJoin | TaskJoin[] | null;
+}
+
+function taskOf(row: BlockRow): TaskJoin | null {
+  return Array.isArray(row.tasks) ? row.tasks[0] ?? null : row.tasks;
 }
 
 function titleOf(row: BlockRow): string {
   if (row.source === "gcal") return "(busy)";
-  const t = Array.isArray(row.tasks) ? row.tasks[0] : row.tasks;
-  return t?.title ?? "Task";
+  return taskOf(row)?.title ?? "Task";
+}
+
+function tagsOf(row: BlockRow): string[] {
+  if (row.source === "gcal") return [];
+  return taskOf(row)?.tags ?? [];
 }
 
 /** Blocks overlapping the half-open window [startUtc, endUtc), ordered by start. */
@@ -22,7 +32,7 @@ export async function getBlocksInRange(startUtc: string, endUtc: string): Promis
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("scheduled_blocks")
-    .select("id, task_id, source, start_utc, end_utc, tasks(title)")
+    .select("id, task_id, source, start_utc, end_utc, tasks(title, tags)")
     .lt("start_utc", endUtc)
     .gt("end_utc", startUtc)
     .order("start_utc", { ascending: true });
@@ -36,6 +46,7 @@ export async function getBlocksInRange(startUtc: string, endUtc: string): Promis
     startUtc: row.start_utc,
     endUtc: row.end_utc,
     title: titleOf(row),
+    tags: tagsOf(row),
   }));
 }
 

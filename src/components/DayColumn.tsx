@@ -12,8 +12,10 @@ import {
   minutesFromDayStart,
   snapMinutes,
 } from "@/lib/time";
+import { matchesLabelFilter } from "@/lib/labels";
 import type { FreeSlot, ScheduledBlock } from "@/lib/types";
 import { InlineComposer } from "./InlineComposer";
+import { LabelFilter } from "./LabelFilter";
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
 const GRID_HEIGHT = DAY_MINUTES * PX_PER_MIN; // 2304
@@ -27,6 +29,9 @@ interface Props {
   freeSlots: FreeSlot[];
   isToday: boolean;
   isPast: boolean;
+  filterLabels: string[];
+  labelsQuery: string;
+  recentTags: string[];
 }
 
 type DragState = {
@@ -37,7 +42,16 @@ type DragState = {
 } | null;
 type ComposerState = { topMin: number; durMin: number } | null;
 
-export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPast }: Props) {
+export function DayColumn({
+  date,
+  dayStartUtc,
+  blocks,
+  freeSlots,
+  isToday,
+  isPast,
+  filterLabels,
+  recentTags,
+}: Props) {
   const router = useRouter();
   const dayStartMs = new Date(dayStartUtc).getTime();
 
@@ -329,6 +343,10 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
   const nextFree = pickComposerTarget();
   const fullyBooked = visibleFreeSlots.length === 0 && blocks.length > 0;
   const empty = blocks.length === 0;
+  const inViewLabels = useMemo(
+    () => Array.from(new Set(blocks.flatMap((b) => b.tags))).sort(),
+    [blocks],
+  );
 
   return (
     <div>
@@ -419,6 +437,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
             const height = Math.max(dur * PX_PER_MIN, 22);
             const movable = b.source === "kairos" && !isPast;
             const isEditing = editingId === b.id;
+            const filteredOut = !matchesLabelFilter(b.tags, filterLabels);
 
             const cls = [
               "block",
@@ -427,6 +446,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
               isResizing ? "block-resizing" : "",
               isEditing ? "block-editing" : "",
               pendingId === b.id ? "block-pending" : "",
+              filteredOut ? "block-filtered-out" : "",
               isPast ? "opacity-75" : "",
             ]
               .filter(Boolean)
@@ -475,6 +495,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
                   endMin={topMin + dur}
                   nowMin={isToday ? nowMin : null}
                 />
+                {b.tags.length > 0 && <BlockTags tags={b.tags} />}
                 {movable && !isEditing && (
                   <div
                     className="block-resize"
@@ -494,6 +515,7 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
               date={date}
               topMin={composer.topMin}
               durMin={composer.durMin}
+              recentTags={recentTags}
               onClose={() => setComposer(null)}
               onSubmitted={() => setComposer(null)}
             />
@@ -513,16 +535,32 @@ export function DayColumn({ date, dayStartUtc, blocks, freeSlots, isToday, isPas
 
       {/* Bottom status line */}
       <div className="status-line">
-        <StatusLeft
-          isPast={isPast}
-          fullyBooked={fullyBooked}
-          empty={empty}
-          nextFree={nextFree}
-          hasComposer={composer !== null}
-          onClaim={() => setComposer(nextFree)}
-        />
+        <div className="status-line-left">
+          <LabelFilter filterLabels={filterLabels} inViewLabels={inViewLabels} />
+          <span className="status-line-sep" aria-hidden="true" />
+          <StatusLeft
+            isPast={isPast}
+            fullyBooked={fullyBooked}
+            empty={empty}
+            nextFree={nextFree}
+            hasComposer={composer !== null}
+            onClaim={() => setComposer(nextFree)}
+          />
+        </div>
         <StatusRight isPast={isPast} blockCount={blocks.length} hasComposer={composer !== null} />
       </div>
+    </div>
+  );
+}
+
+function BlockTags({ tags }: { tags: string[] }) {
+  return (
+    <div className="block-tags" aria-label={`Labels: ${tags.map((t) => `#${t}`).join(", ")}`}>
+      {tags.map((t) => (
+        <span key={t} className="block-tag num">
+          #{t}
+        </span>
+      ))}
     </div>
   );
 }

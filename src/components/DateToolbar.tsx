@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { WEEK_DAYS, addDays, mondayOf, todayInTz } from "@/lib/time";
+import { FIVE_DAYS, WEEK_DAYS, addDays, fiveDayDates, mondayOf, todayInTz, weekDates } from "@/lib/time";
 import { zoneFor } from "@/lib/timezone";
 
-type View = "day" | "week";
+type View = "day" | "5d" | "week";
+
+const STEP: Record<View, number> = { day: 1, "5d": FIVE_DAYS, week: WEEK_DAYS };
+const VIEW_LABEL: Record<View, string> = { day: "Day", "5d": "5d", week: "Week" };
 
 const weekdayLongFmt = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" });
 const weekdayShortFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
@@ -16,10 +19,13 @@ function utc(date: string): Date {
   return new Date(`${date}T00:00:00.000Z`);
 }
 
-function buildHref(date: string, view: View, tz: string): string {
-  const isTodayDate = date === todayInTz(tz);
-  if (view === "day") return isTodayDate ? "/" : `/?date=${date}`;
-  return isTodayDate ? "/?view=week" : `/?view=week&date=${date}`;
+function buildHref(date: string, view: View, tz: string, labelsQuery: string): string {
+  const params = new URLSearchParams();
+  if (view !== "day") params.set("view", view);
+  if (date !== todayInTz(tz)) params.set("date", date);
+  if (labelsQuery) params.set("labels", labelsQuery);
+  const qs = params.toString();
+  return qs ? `/?${qs}` : "/";
 }
 
 export function DateToolbar({
@@ -27,19 +33,18 @@ export function DateToolbar({
   isToday,
   view,
   tz,
+  labelsQuery,
 }: {
   date: string;
   isToday: boolean;
   view: View;
   tz: string;
+  labelsQuery: string;
 }) {
-  const step = view === "week" ? WEEK_DAYS : 1;
-  const prevHref = buildHref(addDays(date, -step), view, tz);
-  const nextHref = buildHref(addDays(date, step), view, tz);
-  const todayHref = view === "week" ? "/?view=week" : "/";
-
-  const dayToggleHref = view === "day" ? undefined : buildHref(date, "day", tz);
-  const weekToggleHref = view === "week" ? undefined : buildHref(date, "week", tz);
+  const step = STEP[view];
+  const prevHref = buildHref(addDays(date, -step), view, tz, labelsQuery);
+  const nextHref = buildHref(addDays(date, step), view, tz, labelsQuery);
+  const todayHref = buildHref(todayInTz(tz), view, tz, labelsQuery);
 
   const tzShort = zoneFor(tz).short;
 
@@ -49,21 +54,28 @@ export function DateToolbar({
         {view === "day" ? (
           <DayTitle date={date} isToday={isToday} tzShort={tzShort} />
         ) : (
-          <WeekTitle date={date} tzShort={tzShort} />
+          <MultiDayTitle dates={view === "5d" ? fiveDayDates(date) : weekDates(date)} tzShort={tzShort} />
         )}
       </div>
 
       <div className="flex items-center gap-3 pb-1">
         <nav aria-label="View" className="flex items-center gap-0.5" role="group">
-          <ViewToggleLink label="Day" href={dayToggleHref} current={view === "day"} />
-          <ViewToggleLink label="Week" href={weekToggleHref} current={view === "week"} />
+          {(Object.keys(VIEW_LABEL) as View[]).map((v) => (
+            <ViewToggleLink
+              key={v}
+              label={VIEW_LABEL[v]}
+              href={v === view ? undefined : buildHref(date, v, tz, labelsQuery)}
+              current={v === view}
+              numeric={v === "5d"}
+            />
+          ))}
         </nav>
         <span className="h-4 w-px bg-hairline" aria-hidden="true" />
         <nav
-          aria-label={view === "week" ? "Week navigation" : "Day navigation"}
+          aria-label={view === "day" ? "Day navigation" : `${VIEW_LABEL[view]} navigation`}
           className="flex items-center gap-0.5"
         >
-          <Link className="glyph-btn" href={prevHref} aria-label={view === "week" ? "Previous week" : "Previous day"}>
+          <Link className="glyph-btn" href={prevHref} aria-label={`Previous ${VIEW_LABEL[view].toLowerCase()}`}>
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M14 6l-6 6 6 6" />
             </svg>
@@ -77,7 +89,7 @@ export function DateToolbar({
           >
             Today
           </Link>
-          <Link className="glyph-btn" href={nextHref} aria-label={view === "week" ? "Next week" : "Next day"}>
+          <Link className="glyph-btn" href={nextHref} aria-label={`Next ${VIEW_LABEL[view].toLowerCase()}`}>
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M10 6l6 6-6 6" />
             </svg>
@@ -92,19 +104,17 @@ function ViewToggleLink({
   label,
   href,
   current,
+  numeric,
 }: {
   label: string;
   href: string | undefined;
   current: boolean;
+  numeric: boolean;
 }) {
-  const className = "glyph-btn px-1.5 text-[11px] font-medium";
+  const className = `glyph-btn px-1.5 text-[11px] font-medium${numeric ? " num" : ""}`;
   if (current || !href) {
     return (
-      <span
-        className={className}
-        aria-current="true"
-        style={{ width: "auto" }}
-      >
+      <span className={className} aria-current="true" style={{ width: "auto" }}>
         {label}
       </span>
     );
@@ -141,10 +151,9 @@ function DayTitle({ date, isToday, tzShort }: { date: string; isToday: boolean; 
   );
 }
 
-function WeekTitle({ date, tzShort }: { date: string; tzShort: string }) {
-  const monday = mondayOf(date);
-  const first = utc(monday);
-  const last = utc(addDays(monday, WEEK_DAYS - 1));
+function MultiDayTitle({ dates, tzShort }: { dates: string[]; tzShort: string }) {
+  const first = utc(dates[0]);
+  const last = utc(dates[dates.length - 1]);
   const sameMonth = first.getUTCMonth() === last.getUTCMonth();
   const sameYear = first.getUTCFullYear() === last.getUTCFullYear();
   const monthH1 = sameMonth

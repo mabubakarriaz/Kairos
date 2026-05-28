@@ -7,6 +7,7 @@ export interface ScheduledBlock {
   startUtc: string; // ISO-8601 UTC
   endUtc: string; // ISO-8601 UTC
   title: string; // task title, or "(busy)" for gcal blocks
+  tags: string[]; // task labels (normalized); empty for gcal
 }
 
 export interface FreeSlot {

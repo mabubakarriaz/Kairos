@@ -12,8 +12,10 @@ import {
   minutesFromDayStart,
   snapMinutes,
 } from "@/lib/time";
+import { matchesLabelFilter } from "@/lib/labels";
 import type { FreeSlot, ScheduledBlock } from "@/lib/types";
 import { InlineComposer } from "./InlineComposer";
+import { LabelFilter } from "./LabelFilter";
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
 const GRID_HEIGHT = DAY_MINUTES * PX_PER_MIN; // 2304
@@ -33,6 +35,10 @@ interface Props {
   days: WeekDay[];
   /** YYYY-MM-DD for "today" in the active zone — passed in from the server. */
   today: string;
+  filterLabels: string[];
+  labelsQuery: string;
+  recentTags: string[];
+  view: "5d" | "week";
 }
 
 type DragState = {
@@ -46,10 +52,22 @@ type DragState = {
 
 type ComposerState = { dateIdx: number; topMin: number; durMin: number } | null;
 
-export function WeekColumns({ days, today }: Props) {
+export function WeekColumns({ days, today, filterLabels, recentTags, view }: Props) {
   const router = useRouter();
   const todayIdx = days.findIndex((d) => d.date === today);
   const isPastByCol = useMemo(() => days.map((d) => d.date < today), [days, today]);
+  const inViewLabels = useMemo(
+    () => Array.from(new Set(days.flatMap((d) => d.blocks.flatMap((b) => b.tags)))).sort(),
+    [days],
+  );
+  const colCount = days.length;
+  const gridStyle = useMemo(
+    () => ({
+      gridTemplateColumns: `repeat(${colCount}, 1fr)` as const,
+    }),
+    [colCount],
+  );
+  const canvasMinWidth = Math.max(560, colCount * 140);
 
   const [drag, setDrag] = useState<DragState>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -414,9 +432,16 @@ export function WeekColumns({ days, today }: Props) {
         ref={scrollRef}
         className="scroll-area max-h-[78vh] overflow-auto rounded-md border border-hairline bg-surface"
       >
-        <div className={`week-grid ${drag ? "grid-dragging" : ""}`}>
+        <div
+          className={`week-grid ${drag ? "grid-dragging" : ""}`}
+          data-view={view}
+          style={{ minWidth: `${canvasMinWidth}px` }}
+        >
           {/* Sticky weekday strip */}
-          <div className="week-headers">
+          <div
+            className="week-headers"
+            style={{ gridTemplateColumns: `48px ${`repeat(${colCount}, 1fr)`}` }}
+          >
             <div className="week-header-spacer" aria-hidden="true" />
             {days.map((d, i) => {
               const dt = new Date(`${d.date}T00:00:00.000Z`);
@@ -444,7 +469,7 @@ export function WeekColumns({ days, today }: Props) {
               </div>
             ))}
 
-            <div className="week-cols">
+            <div className="week-cols" style={gridStyle}>
               {days.map((d, i) => {
                 const dayStartUtc = d.dayStartUtc;
                 const past = isPastByCol[i];
@@ -506,6 +531,7 @@ export function WeekColumns({ days, today }: Props) {
                       const height = Math.max(dur * PX_PER_MIN, 22);
                       const movable = b.source === "kairos" && !past;
                       const isEditing = editingId === b.id;
+                      const filteredOut = !matchesLabelFilter(b.tags, filterLabels);
 
                       const cls = [
                         "block",
@@ -514,6 +540,7 @@ export function WeekColumns({ days, today }: Props) {
                         isResizing ? "block-resizing" : "",
                         isEditing ? "block-editing" : "",
                         pendingId === b.id ? "block-pending" : "",
+                        filteredOut ? "block-filtered-out" : "",
                         past ? "opacity-75" : "",
                       ]
                         .filter(Boolean)
@@ -526,6 +553,7 @@ export function WeekColumns({ days, today }: Props) {
                           style={{ top: topMin * PX_PER_MIN, height }}
                           onPointerDown={(e) => startDrag(e, b, i)}
                         >
+                          {b.tags.length > 0 && !isEditing && <BlockTagDots tags={b.tags} />}
                           {movable && !isEditing && (
                             <button
                               type="button"
@@ -602,6 +630,7 @@ export function WeekColumns({ days, today }: Props) {
                         date={d.date}
                         topMin={composer.topMin}
                         durMin={composer.durMin}
+                        recentTags={recentTags}
                         onClose={() => setComposer(null)}
                         onSubmitted={() => setComposer(null)}
                       />
@@ -625,15 +654,40 @@ export function WeekColumns({ days, today }: Props) {
       </div>
 
       <div className="status-line">
-        <StatusLeft
-          nextFree={nextFree}
-          days={days}
-          todayIdx={todayIdx}
-          hasComposer={composer !== null}
-          onClaim={() => nextFree && setComposer(nextFree)}
-        />
+        <div className="status-line-left">
+          <LabelFilter filterLabels={filterLabels} inViewLabels={inViewLabels} />
+          <span className="status-line-sep" aria-hidden="true" />
+          <StatusLeft
+            nextFree={nextFree}
+            days={days}
+            todayIdx={todayIdx}
+            hasComposer={composer !== null}
+            onClaim={() => nextFree && setComposer(nextFree)}
+          />
+        </div>
         <StatusRight totalBlocks={totalBlocks} hasComposer={composer !== null} />
       </div>
+    </div>
+  );
+}
+
+function BlockTagDots({ tags }: { tags: string[] }) {
+  const visible = tags.slice(0, 3);
+  const overflow = Math.max(0, tags.length - visible.length);
+  return (
+    <div
+      className="block-tag-dots"
+      aria-label={`Labels: ${tags.map((t) => `#${t}`).join(", ")}`}
+      title={tags.map((t) => `#${t}`).join(" ")}
+    >
+      {visible.map((t) => (
+        <span key={t} className="block-tag-dot" aria-hidden="true" />
+      ))}
+      {overflow > 0 && (
+        <span className="block-tag-dots-more num" aria-hidden="true">
+          +{overflow}
+        </span>
+      )}
     </div>
   );
 }

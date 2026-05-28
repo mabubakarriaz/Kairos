@@ -4,15 +4,19 @@ import { DayColumn } from "@/components/DayColumn";
 import { WeekColumns, type WeekDay } from "@/components/WeekColumns";
 import { getBlocksInRange } from "@/server/schedule";
 import { getFreeSlots } from "@/server/freeslots";
+import { getRecentTags } from "@/server/tasks";
 import {
   addDays,
   dayWindow,
+  fiveDayDates,
+  fiveDayWindow,
   mondayOf,
   normalizeDate,
   todayInTz,
   weekDates,
   weekWindow,
 } from "@/lib/time";
+import { parseLabelsParam } from "@/lib/labels";
 import {
   DEFAULT_TZ,
   TZ_COOKIE,
@@ -21,13 +25,15 @@ import {
 } from "@/lib/timezone";
 import type { FreeSlot, ScheduledBlock } from "@/lib/types";
 
-// Always render on request — the page reads ?date / ?view + cookie + live DB data.
+// Always render on request — the page reads ?date / ?view / ?labels + cookie + live DB data.
 export const dynamic = "force-dynamic";
 
-type View = "day" | "week";
+type View = "day" | "5d" | "week";
 
 function parseView(input: string | undefined | null): View {
-  return input === "week" ? "week" : "day";
+  if (input === "week") return "week";
+  if (input === "5d") return "5d";
+  return "day";
 }
 
 async function resolveTz(): Promise<string> {
@@ -47,28 +53,61 @@ function safeDecode(raw: string): string {
   }
 }
 
+function rangeContainsToday(view: View, date: string, today: string): boolean {
+  if (view === "day") return date === today;
+  if (view === "5d") return today >= date && today < addDays(date, 5);
+  return mondayOf(date) === mondayOf(today);
+}
+
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; view?: string }>;
+  searchParams: Promise<{ date?: string; view?: string; labels?: string }>;
 }) {
-  const { date: dateParam, view: viewParam } = await searchParams;
+  const { date: dateParam, view: viewParam, labels: labelsParam } = await searchParams;
   const tz = await resolveTz();
   const date = normalizeDate(dateParam, tz);
   const view = parseView(viewParam);
   const today = todayInTz(tz);
-  // Day mode: "today" means this date is today. Week mode: "today" means this week contains today.
-  const isToday = view === "day" ? date === today : mondayOf(date) === mondayOf(today);
+  const filterLabels = parseLabelsParam(labelsParam);
+  const labelsQuery = filterLabels.join(",");
+  const isToday = rangeContainsToday(view, date, today);
 
   return (
-    <div className={view === "week" ? "mx-auto max-w-7xl" : "mx-auto max-w-3xl"}>
-      <DateToolbar date={date} isToday={isToday} view={view} tz={tz} />
-      {view === "week" ? <WeekView date={date} tz={tz} /> : <DayView date={date} tz={tz} />}
+    <div className={view === "day" ? "mx-auto max-w-3xl" : "mx-auto max-w-7xl"}>
+      <DateToolbar
+        date={date}
+        isToday={isToday}
+        view={view}
+        tz={tz}
+        labelsQuery={labelsQuery}
+      />
+      {view === "day" ? (
+        <DayView date={date} tz={tz} filterLabels={filterLabels} labelsQuery={labelsQuery} />
+      ) : (
+        <MultiDayView
+          date={date}
+          tz={tz}
+          view={view}
+          filterLabels={filterLabels}
+          labelsQuery={labelsQuery}
+        />
+      )}
     </div>
   );
 }
 
-async function DayView({ date, tz }: { date: string; tz: string }) {
+async function DayView({
+  date,
+  tz,
+  filterLabels,
+  labelsQuery,
+}: {
+  date: string;
+  tz: string;
+  filterLabels: string[];
+  labelsQuery: string;
+}) {
   const today = todayInTz(tz);
   const isToday = date === today;
   const isPast = date < today;
@@ -76,13 +115,16 @@ async function DayView({ date, tz }: { date: string; tz: string }) {
 
   let blocks: ScheduledBlock[] = [];
   let freeSlots: FreeSlot[] = [];
+  let recentTags: string[] = [];
 
-  const [blocksRes, freeRes] = await Promise.allSettled([
+  const [blocksRes, freeRes, recentRes] = await Promise.allSettled([
     getBlocksInRange(startUtc, endUtc),
     getFreeSlots(startUtc, endUtc, 5),
+    getRecentTags(),
   ]);
   if (blocksRes.status === "fulfilled") blocks = blocksRes.value;
   if (freeRes.status === "fulfilled") freeSlots = freeRes.value;
+  if (recentRes.status === "fulfilled") recentTags = recentRes.value;
 
   const errors: string[] = [];
   if (blocksRes.status === "rejected") errors.push(`schedule · ${errMsg(blocksRes.reason)}`);
@@ -98,29 +140,45 @@ async function DayView({ date, tz }: { date: string; tz: string }) {
         freeSlots={freeSlots}
         isToday={isToday}
         isPast={isPast}
+        filterLabels={filterLabels}
+        labelsQuery={labelsQuery}
+        recentTags={recentTags}
       />
     </>
   );
 }
 
-async function WeekView({ date, tz }: { date: string; tz: string }) {
+async function MultiDayView({
+  date,
+  tz,
+  view,
+  filterLabels,
+  labelsQuery,
+}: {
+  date: string;
+  tz: string;
+  view: "5d" | "week";
+  filterLabels: string[];
+  labelsQuery: string;
+}) {
   const today = todayInTz(tz);
-  const dates = weekDates(date);
-  const { startUtc, endUtc } = weekWindow(date, tz);
+  const dates = view === "5d" ? fiveDayDates(date) : weekDates(date);
+  const { startUtc, endUtc } = view === "5d" ? fiveDayWindow(date, tz) : weekWindow(date, tz);
 
-  // One ranged blocks query + WEEK_DAYS parallel per-day free-slot queries.
   const dayWindows = dates.map((d) => {
     const start = zonedDayStartUtc(d, tz);
     const end = zonedDayStartUtc(addDays(d, 1), tz);
     return { date: d, startUtc: start, endUtc: end };
   });
 
-  const [blocksRes, freeResults] = await Promise.all([
+  const [blocksRes, freeResults, recentRes] = await Promise.all([
     Promise.allSettled([getBlocksInRange(startUtc, endUtc)]).then((r) => r[0]),
     Promise.allSettled(dayWindows.map((w) => getFreeSlots(w.startUtc, w.endUtc, 5))),
+    Promise.allSettled([getRecentTags()]).then((r) => r[0]),
   ]);
 
   const allBlocks: ScheduledBlock[] = blocksRes.status === "fulfilled" ? blocksRes.value : [];
+  const recentTags: string[] = recentRes.status === "fulfilled" ? recentRes.value : [];
 
   const days: WeekDay[] = dayWindows.map((w, i) => {
     const wStartMs = new Date(w.startUtc).getTime();
@@ -148,7 +206,14 @@ async function WeekView({ date, tz }: { date: string; tz: string }) {
   return (
     <>
       <LoadErrorNotice errors={errors} />
-      <WeekColumns days={days} today={today} />
+      <WeekColumns
+        days={days}
+        today={today}
+        filterLabels={filterLabels}
+        labelsQuery={labelsQuery}
+        recentTags={recentTags}
+        view={view}
+      />
     </>
   );
 }

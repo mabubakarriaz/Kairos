@@ -38,6 +38,9 @@ export function dayWindow(date: string, timeZone: string): { startUtc: string; e
 /** Number of columns rendered side-by-side in the week view. */
 export const WEEK_DAYS = 7;
 
+/** Number of days rendered in the rolling 5-day view. */
+export const FIVE_DAYS = 5;
+
 /** YYYY-MM-DD of the Monday in the calendar week containing `date`. */
 export function mondayOf(date: string): string {
   const d = new Date(`${date}T00:00:00.000Z`);
@@ -58,6 +61,18 @@ export function weekWindow(date: string, timeZone: string): { startUtc: string; 
 export function weekDates(date: string): string[] {
   const monday = mondayOf(date);
   return Array.from({ length: WEEK_DAYS }, (_, i) => addDays(monday, i));
+}
+
+/** The five YYYY-MM-DDs starting at `date` (a rolling 5-day window, not Mon-anchored). */
+export function fiveDayDates(date: string): string[] {
+  return Array.from({ length: FIVE_DAYS }, (_, i) => addDays(date, i));
+}
+
+/** Half-open UTC window covering the rolling 5-day span starting at `date`, in zone. */
+export function fiveDayWindow(date: string, timeZone: string): { startUtc: string; endUtc: string } {
+  const startUtc = zonedDayStartUtc(date, timeZone);
+  const endUtc = zonedDayStartUtc(addDays(date, FIVE_DAYS), timeZone);
+  return { startUtc, endUtc };
 }
 
 /** Shift a yyyy-mm-dd date by n days. Calendar math — TZ-agnostic. */

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import "./globals.css";
 
@@ -34,6 +36,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen antialiased">
         <ThemeToggle />
         <main className="mx-auto max-w-3xl px-6 pb-12 pt-10 sm:px-8">{children}</main>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

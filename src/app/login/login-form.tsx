@@ -7,6 +7,8 @@ interface Props {
   configured: boolean;
   initialLockedUntilMs: number | null;
   initialAttempts: number;
+  /** Fired the instant the password verifies. The scene owns the reveal + nav. */
+  onUnlock: () => void;
 }
 
 const MAX_ATTEMPTS = 3;
@@ -20,18 +22,26 @@ function fmtRemaining(ms: number): string {
   return `${h}h ${m.toString().padStart(2, "0")}m`;
 }
 
-export function LoginForm({ configured, initialLockedUntilMs, initialAttempts }: Props) {
+export function LoginForm({
+  configured,
+  initialLockedUntilMs,
+  initialAttempts,
+  onUnlock,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [password, setPassword] = useState("");
   const [lockedUntilMs, setLockedUntilMs] = useState<number | null>(initialLockedUntilMs);
   const [attempts, setAttempts] = useState(initialAttempts);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Latched true on success so the field stays calm and disabled while the
+  // reveal plays out, instead of flickering back to an editable state.
+  const [unlocked, setUnlocked] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   const isLocked = lockedUntilMs !== null && lockedUntilMs > now;
   const attemptsLeft = Math.max(0, MAX_ATTEMPTS - attempts);
-  const disabled = isLocked || pending || !configured;
+  const disabled = isLocked || pending || unlocked || !configured;
 
   useEffect(() => {
     if (!disabled) inputRef.current?.focus();
@@ -69,7 +79,12 @@ export function LoginForm({ configured, initialLockedUntilMs, initialAttempts }:
     } finally {
       setPending(false);
     }
-    if (!result) return; // success path: server-side redirect is taking over
+    if (!result) return; // defensive: should always resolve now
+    if (result.ok) {
+      setUnlocked(true);
+      onUnlock();
+      return;
+    }
     if (!result.ok) {
       if (typeof result.attempts === "number") setAttempts(result.attempts);
       if (result.lockedUntilMs) {
@@ -101,7 +116,7 @@ export function LoginForm({ configured, initialLockedUntilMs, initialAttempts }:
           aria-invalid={error ? true : undefined}
         />
         <span className="login-enter num" aria-hidden="true">
-          {pending ? "…" : "↵"}
+          {unlocked ? "✓" : pending ? "…" : "↵"}
         </span>
       </div>
       <p
@@ -117,6 +132,7 @@ export function LoginForm({ configured, initialLockedUntilMs, initialAttempts }:
           attemptsLeft,
           attempts,
           pending,
+          unlocked,
         })}
       </p>
       {/* Lets Enter on the input commit even without a separate button. */}
@@ -136,10 +152,12 @@ interface MetaArgs {
   attempts: number;
   attemptsLeft: number;
   pending: boolean;
+  unlocked: boolean;
 }
 
 function renderMeta(args: MetaArgs): string {
-  const { configured, isLocked, lockedUntilMs, now, error, attempts, attemptsLeft, pending } = args;
+  const { configured, isLocked, lockedUntilMs, now, error, attempts, attemptsLeft, pending, unlocked } = args;
+  if (unlocked) return "opening your day…";
   if (!configured) return "set APP_PASSWORD and AUTH_SECRET to enable login";
   if (isLocked && lockedUntilMs) return `locked · ${fmtRemaining(lockedUntilMs - now)} left`;
   if (pending) return "checking…";

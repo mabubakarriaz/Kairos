@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { LoginForm } from "./login-form";
+import { LoginScene } from "./login-scene";
 import { authConfigured, getLockoutState } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
@@ -23,16 +23,10 @@ export default async function LoginPage() {
     : { locked: false, lockedUntil: null, attempts: 0 };
 
   return (
-    <div className="login-stage">
-      <header className="login-header">
-        <h1 className="login-title">Kairos</h1>
-        <p className="login-sublabel">private day</p>
-      </header>
-      <LoginForm
-        configured={configured}
-        initialLockedUntilMs={lockout.lockedUntil?.getTime() ?? null}
-        initialAttempts={lockout.attempts}
-      />
-    </div>
+    <LoginScene
+      configured={configured}
+      initialLockedUntilMs={lockout.lockedUntil?.getTime() ?? null}
+      initialAttempts={lockout.attempts}
+    />
   );
 }

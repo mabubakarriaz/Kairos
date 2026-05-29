@@ -1311,12 +1311,67 @@
     color: rgb(var(--text));
   }
 
-  /* ── Login stage — gates the schedule. Single canvas, no card. The composer-
-     style input is the only chrome on the page; everything else is type. */
+  /* ── Login stage — gates the schedule. The day you're locked out of glows
+     behind the password field as a live, ticking ghost grid; on unlock it
+     rises to full and the foreground dissolves into the real schedule. */
   .login-stage {
-    @apply mx-auto flex w-full max-w-sm flex-col items-stretch;
-    padding-top: clamp(14vh, 20vh, 26vh);
+    @apply relative flex w-full flex-1 flex-col;
   }
+  /* The foreground column — header + composer-style field. Lifts and fades
+     away as the reveal plays. */
+  .login-foreground {
+    @apply relative z-10 mx-auto flex w-full max-w-sm flex-col items-stretch;
+    padding-top: clamp(14vh, 20vh, 26vh);
+    transition: opacity 380ms var(--ease-snap), transform 380ms var(--ease-snap);
+    will-change: opacity, transform;
+  }
+
+  /* ── The day behind the gate. Full-bleed, non-interactive, dimmed. A soft
+     radial mask keeps presence around the field and lets the grid fall away
+     at the edges so type stays legible. */
+  .login-backdrop {
+    @apply pointer-events-none fixed inset-0 z-0 flex justify-center overflow-hidden;
+    opacity: 0.16;
+    transition: opacity 600ms var(--ease-snap), transform 600ms var(--ease-snap);
+    -webkit-mask-image: radial-gradient(125% 78% at 50% 46%, #000 32%, transparent 100%);
+    mask-image: radial-gradient(125% 78% at 50% 46%, #000 32%, transparent 100%);
+    will-change: opacity, transform;
+  }
+  /* The ruled page — same hour hairlines as the real day grid, centered to the
+     day-view column width so the silhouette lines up with where the schedule
+     lands. JS sets height + the translateY that parks `now` near mid-screen. */
+  .login-grid {
+    @apply relative w-full;
+    max-width: 48rem; /* max-w-3xl — matches the day view */
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgb(var(--grid-line)) 0 1px,
+      transparent 1px 96px
+    );
+  }
+  /* Ghost blocks — evocative amber texture, never real data. Flat, inert. */
+  .login-ghost-block {
+    @apply cursor-default items-end;
+    display: flex;
+  }
+  .login-ghost-time {
+    @apply leading-none;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    color: rgb(var(--accent-strong) / 0.75);
+  }
+
+  /* Reveal — the light comes up: ghost grid rises to near-full and the form
+     lifts away. Both ride ease-snap; reduced-motion zeroes the durations. */
+  .login-stage[data-revealing] .login-backdrop {
+    opacity: 0.9;
+    transform: translateY(-10px);
+  }
+  .login-stage[data-revealing] .login-foreground {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+
   .login-header {
     @apply flex flex-col items-start gap-2;
   }

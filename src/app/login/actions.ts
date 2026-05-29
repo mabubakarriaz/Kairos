@@ -79,7 +79,10 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
     path: "/",
     expires: session.expiresAt,
   });
-  redirect("/");
+  // Return success rather than redirecting server-side: the client plays the
+  // unlock reveal (the ghost day rises to full) and then navigates, so the
+  // cookie is already set when the proxy re-checks `/`.
+  return { ok: true };
 }
 
 export async function logoutAction(): Promise<void> {

@@ -98,6 +98,24 @@ export function addMonths(date: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** YYYY-MM-DD of the first day of the calendar quarter containing `date` (Jan/Apr/Jul/Oct 1). */
+export function quarterStart(date: string): string {
+  const d = new Date(`${date}T00:00:00.000Z`);
+  const q = Math.floor(d.getUTCMonth() / 3); // 0..3
+  return `${d.getUTCFullYear()}-${String(q * 3 + 1).padStart(2, "0")}-01`;
+}
+
+/** Shift a yyyy-mm-dd date by n calendar quarters, anchored to the quarter's first day. */
+export function addQuarters(date: string, n: number): string {
+  return addMonths(quarterStart(date), n * 3);
+}
+
+/** Whole calendar days spanned by a half-open UTC window. Rounds to absorb the
+ *  one-hour wobble a DST transition can introduce inside the span. */
+export function daysBetweenUtc(startUtc: string, endUtc: string): number {
+  return Math.round((new Date(endUtc).getTime() - new Date(startUtc).getTime()) / 86_400_000);
+}
+
 /** The 42 YYYY-MM-DD dates in the month grid: Monday before month-start through 6 weeks. */
 export function monthGridDates(date: string): string[] {
   const first = monthStart(date);

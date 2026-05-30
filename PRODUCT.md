@@ -29,7 +29,7 @@ Three words: **quiet, precise, opinionated.** A tool with a point of view, not a
 1. **The schedule is the hero.** Every other surface (date toolbar, add-task form, free-slots panel, header) exists to serve the day grid. Chrome must not compete with content.
 2. **Quiet on rest, expressive on touch.** Static views feel typographic and restrained. Personality lives in the moment of interaction: how a block lifts when grabbed, how a free slot reveals itself, how the now-line behaves.
 3. **Type carries the weight color used to.** A confident type system (size, weight, tabular numerals, deliberate tracking) does the work before color is invoked. Color is a scalpel, not a paintbrush.
-4. **Single user means single point of view.** No theme picker explosion, no settings panel, no accessibility customization knobs beyond OS-level respect. Commit to defaults.
+4. **Single user means single point of view.** No theme picker explosion, no accessibility customization knobs beyond OS-level respect. Commit to defaults. The one settings room that exists (`/settings`, reached by the corner gear) is for *data the user owns*, labels and their time budgets, not for configuring the app's behavior. It honors the spirit of "no settings panel" by staying a flat, typographic, single-column room with no SaaS settings sprawl, rather than the literal absence of a settings route.
 5. **The DB enforces correctness; the UI enforces calm.** No-overlap is a Postgres constraint, not a modal warning. Free-slots are SQL, not anxious JS. The system is quietly correct; the UI only surfaces what the user needs to feel.
 
 ## Accessibility & Inclusion

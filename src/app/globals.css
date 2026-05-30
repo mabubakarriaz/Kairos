@@ -1311,6 +1311,347 @@
     color: rgb(var(--text));
   }
 
+  /* ── Settings — labels & budgets ───────────────────────────────────────────
+     A second room, not chrome on the grid: same single-column canvas, flat,
+     hairline-separated, typographic. No cards. Reached by the corner gear. */
+  .settings-page {
+    @apply flex min-h-0 flex-1 flex-col overflow-y-auto pb-10;
+  }
+  .settings-head {
+    @apply mb-8 flex flex-col items-start gap-3;
+  }
+  .settings-back {
+    @apply inline-flex items-center gap-1 text-[11px] leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+    letter-spacing: 0.04em;
+  }
+  .settings-back:hover {
+    color: rgb(var(--text));
+  }
+  .settings-back:focus-visible {
+    outline: none;
+    color: rgb(var(--accent-strong));
+  }
+  .settings-title {
+    @apply text-3xl font-semibold leading-none text-ink;
+    letter-spacing: -0.02em;
+  }
+  .settings-error {
+    @apply mb-6 rounded-md px-4 py-3 text-sm text-ink;
+    border: 1px solid rgb(var(--now) / 0.4);
+    background-color: rgb(var(--now) / 0.06);
+  }
+  .settings-section {
+    @apply flex flex-col gap-4 py-8;
+  }
+  .settings-section + .settings-section {
+    border-top: 1px solid rgb(var(--border));
+  }
+  .settings-section-head {
+    @apply text-[11px] font-medium uppercase leading-none text-ink-muted;
+    letter-spacing: 0.12em;
+  }
+  .settings-section-bar {
+    @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-2;
+  }
+
+  /* ── Label manager ──────────────────────────────────────────────────────── */
+  .label-manager {
+    @apply flex flex-col gap-1;
+  }
+  /* The add-a-label row reads as a one-line composer: flat at rest with a bottom
+     hairline, accent ring when focused, mirroring the inline task composer. */
+  .label-add {
+    @apply flex items-center gap-2 rounded-sm px-2 py-2;
+    border-bottom: 1px solid rgb(var(--border));
+    transition: box-shadow 200ms var(--ease-snap), border-color 200ms var(--ease-snap);
+  }
+  .label-add:focus-within {
+    border-color: transparent;
+    box-shadow: var(--shadow-lift);
+    background-color: rgb(var(--surface));
+  }
+  .label-add-sigil {
+    @apply text-[12px] font-medium leading-none;
+    color: rgb(var(--accent-strong) / 0.7);
+  }
+  .label-add-input {
+    @apply min-w-0 flex-1 bg-transparent text-[13px] leading-none outline-none;
+    color: rgb(var(--text));
+    font-family: var(--font-mono-stack);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+  .label-add-input::placeholder {
+    color: rgb(var(--text-faint));
+  }
+  .label-add-hint {
+    @apply text-[10px] uppercase leading-none;
+    letter-spacing: 0.14em;
+    color: rgb(var(--text-faint));
+  }
+  .label-manager-error {
+    @apply mt-1 px-2 text-[11px] leading-tight;
+    color: rgb(var(--now));
+  }
+  .label-empty {
+    @apply mt-3 max-w-[60ch] text-[13px] leading-relaxed;
+    color: rgb(var(--text-muted));
+  }
+  .label-list {
+    @apply mt-1 flex list-none flex-col p-0;
+  }
+  .label-row {
+    @apply flex flex-col py-1;
+    border-bottom: 1px solid rgb(var(--border) / 0.7);
+  }
+  .label-row:last-child {
+    border-bottom: 0;
+  }
+  .label-row-main {
+    @apply flex min-h-8 items-center gap-3;
+  }
+  .label-row-tag {
+    @apply text-[13px] leading-none;
+    color: rgb(var(--accent-strong) / 0.85);
+    min-width: 8rem;
+  }
+  .label-row-budget {
+    @apply mr-auto inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+    letter-spacing: 0.02em;
+  }
+  .label-row-budget[data-set] {
+    color: rgb(var(--text-muted));
+  }
+  .label-row-budget:hover {
+    color: rgb(var(--text));
+    background-color: rgb(var(--accent) / 0.08);
+  }
+  .label-row-budget:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
+  .label-row-remove {
+    @apply inline-flex h-6 w-6 items-center justify-center rounded-sm opacity-0;
+    @apply transition-all duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+  }
+  .label-row:hover .label-row-remove,
+  .label-row:focus-within .label-row-remove {
+    opacity: 1;
+  }
+  .label-row-remove:hover {
+    color: rgb(var(--now));
+    background-color: rgb(var(--now) / 0.08);
+  }
+  @media (hover: none) {
+    .label-row-remove {
+      opacity: 1;
+    }
+  }
+
+  /* Inline budget editor — replaces the row's budget/remove cluster in place. */
+  .budget-editor {
+    @apply flex flex-1 flex-wrap items-center gap-x-2 gap-y-2;
+  }
+  .budget-editor-hours {
+    @apply w-16 bg-transparent text-right text-[13px] leading-none outline-none;
+    color: rgb(var(--text));
+    font-family: var(--font-mono-stack);
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px solid rgb(var(--border-strong));
+    padding-bottom: 2px;
+  }
+  .budget-editor-hours:focus {
+    border-color: rgb(var(--accent));
+  }
+  .budget-editor-unit {
+    @apply -ml-1 text-[11px] leading-none;
+    color: rgb(var(--text-faint));
+  }
+  .budget-editor-periods {
+    @apply inline-flex items-center gap-0.5;
+  }
+  .budget-period-chip {
+    @apply inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] font-medium leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+    cursor: pointer;
+  }
+  .budget-period-chip:hover {
+    color: rgb(var(--text));
+    background-color: rgb(var(--accent) / 0.06);
+  }
+  .budget-period-chip[data-active] {
+    color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent) / 0.16);
+  }
+  .budget-editor-actions {
+    @apply ml-auto inline-flex items-center gap-2;
+  }
+  .budget-editor-save {
+    @apply inline-flex items-center rounded-sm px-1.5 py-1 text-[10px] uppercase leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    letter-spacing: 0.14em;
+    color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent) / 0.12);
+  }
+  .budget-editor-save:hover {
+    background-color: rgb(var(--accent) / 0.2);
+  }
+  .budget-editor-clear {
+    @apply text-[10px] uppercase leading-none;
+    letter-spacing: 0.14em;
+    color: rgb(var(--text-faint));
+    @apply transition-colors duration-150 ease-snap;
+  }
+  .budget-editor-clear:hover {
+    color: rgb(var(--now));
+  }
+  .budget-editor-cancel {
+    @apply inline-flex h-5 w-5 items-center justify-center rounded-sm;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+  }
+  .budget-editor-cancel:hover {
+    color: rgb(var(--text));
+  }
+
+  /* Untracked labels — free-text tags already on tasks, offered for promotion. */
+  .label-untracked {
+    @apply mt-5 flex flex-col gap-2;
+  }
+  .label-untracked-head {
+    @apply text-[10px] uppercase leading-none;
+    letter-spacing: 0.14em;
+    color: rgb(var(--text-faint));
+  }
+  .label-untracked-row {
+    @apply flex flex-wrap items-center gap-1.5;
+  }
+  .label-untracked-pill {
+    @apply inline-flex items-center gap-1 rounded-sm px-1.5 py-1 text-[11px] leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-muted));
+    background-color: rgb(var(--surface-2) / 0.6);
+  }
+  .label-untracked-pill:hover {
+    color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent) / 0.12);
+  }
+  .label-untracked-plus {
+    @apply text-[12px] leading-none;
+    color: rgb(var(--text-faint));
+  }
+  .label-untracked-pill:hover .label-untracked-plus {
+    color: rgb(var(--accent-strong));
+  }
+
+  /* ── Budget range nav — unit chips + the range label + prev/now/next. */
+  .range-nav {
+    @apply flex flex-wrap items-center gap-x-3 gap-y-2;
+  }
+  .range-units {
+    @apply inline-flex items-center gap-0.5;
+  }
+  .range-chip {
+    @apply inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] font-medium leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+  }
+  .range-chip:hover {
+    color: rgb(var(--text));
+    background-color: rgb(var(--accent) / 0.06);
+  }
+  .range-chip[aria-current="true"] {
+    color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent) / 0.16);
+  }
+  .range-chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
+  .range-label {
+    @apply text-[11px] leading-none;
+    color: rgb(var(--text-muted));
+    letter-spacing: 0.02em;
+  }
+  .range-steps {
+    @apply inline-flex items-center gap-0.5;
+  }
+
+  /* ── Budget meters — the hairline-meter answer to "am I over?". A graphite
+     track (open allowance) carries an amber fill (consumed). Over budget, the
+     budget sits as a tick partway along and the overrun spills past it as an
+     ember tail. No rings, no tiles, no dopamine. Built on the same track+fill
+     vocabulary as the month-cell share bar. */
+  .budgets-empty {
+    @apply max-w-[60ch] text-[13px] leading-relaxed;
+    color: rgb(var(--text-muted));
+  }
+  .budget-list {
+    @apply flex list-none flex-col gap-4 p-0;
+  }
+  .budget-row {
+    @apply flex flex-col gap-1.5;
+  }
+  .budget-row-head {
+    @apply flex items-baseline justify-between gap-3;
+  }
+  .budget-row-tag {
+    @apply text-[13px] leading-none;
+    color: rgb(var(--accent-strong) / 0.85);
+  }
+  .budget-row-figures {
+    @apply inline-flex items-baseline gap-1.5 text-[11px] leading-none;
+    color: rgb(var(--text-faint));
+    letter-spacing: 0.02em;
+  }
+  .budget-row-used {
+    color: rgb(var(--text));
+    font-weight: 500;
+  }
+  .budget-row-of {
+    color: rgb(var(--text-faint) / 0.6);
+  }
+  .budget-row-budget {
+    color: rgb(var(--text-muted));
+  }
+  .budget-row-rest {
+    @apply ml-1;
+    color: rgb(var(--text-faint));
+  }
+  .budget-row[data-over] .budget-row-rest {
+    color: rgb(var(--now));
+    font-weight: 500;
+  }
+  .budget-meter {
+    @apply relative w-full overflow-hidden rounded-full;
+    height: 4px;
+    background-color: rgb(var(--free) / 0.26);
+  }
+  .budget-meter-fill {
+    @apply absolute left-0 top-0 h-full;
+    background-color: rgb(var(--accent) / 0.72);
+    transition: width 260ms var(--ease-snap);
+  }
+  .budget-meter-over {
+    @apply absolute top-0 h-full;
+    background-color: rgb(var(--now) / 0.85);
+    transition: left 260ms var(--ease-snap), width 260ms var(--ease-snap);
+  }
+  /* The budget boundary — a thin canvas-colored gap separating consumed-amber
+     from overrun-ember, reading as a tick on the bar. */
+  .budget-meter-tick {
+    @apply absolute top-0 h-full;
+    width: 1.5px;
+    background-color: rgb(var(--bg));
+    transition: left 260ms var(--ease-snap);
+  }
+
   /* ── Login stage — gates the schedule. The day you're locked out of glows
      behind the password field as a live, ticking ghost grid; on unlock it
      rises to full and the foreground dissolves into the real schedule. */

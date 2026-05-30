@@ -143,5 +143,6 @@ Never run `supabase db reset` against production. It drops every table.
 | `20260528000000_checkpoints.sql` | `checkpoints` + `checkpoint_rules` for effective-dated day-dividers, `checkpoints_for_date()` function. |
 | `20260528010000_auth_lockout.sql` | `auth_lockout` table for the password-gate brute-force lockout. |
 | `20260528020000_recurrence.sql` | `series_id`/`recurrence_kind`/`recurrence_interval_days` on `tasks`, plus `create_task_series()` and `delete_block_series_from()` RPCs. |
+| `20260531000000_label_budgets.sql` | `labels` registry (slug PK + optional `budget_hours`/`budget_period` pair) for time-allocation budgets, plus the `label_usage()` per-label aggregation function. RLS on. |
 
-All four are idempotent and non-destructive.
+All five are idempotent and non-destructive.

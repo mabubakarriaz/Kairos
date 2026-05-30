@@ -14,8 +14,15 @@ import {
   deleteCheckpoint,
   updateCheckpoint,
 } from "@/server/checkpoints";
+import {
+  clearBudget,
+  registerLabel,
+  removeLabel,
+  setBudget,
+} from "@/server/labels";
 import { isoAt } from "@/lib/time";
-import { parseLabelsInput } from "@/lib/labels";
+import { normalizeLabel, parseLabelsInput } from "@/lib/labels";
+import { isBudgetPeriod } from "@/lib/budgets";
 import type { RecurrenceKind, RecurrenceSpec } from "@/lib/types";
 import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone } from "@/lib/timezone";
 
@@ -223,5 +230,74 @@ export async function editBlockAction(
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath("/");
+  return { ok: true };
+}
+
+// ── Labels & budgets (settings) ──────────────────────────────────────────────
+// Labels are free-text tags on tasks; the registry promotes one into a managed
+// thing that can carry a time budget. None of these touch a task row, so they
+// only ever revalidate /settings.
+
+const BUDGET_HOURS_MAX = 100_000;
+
+/** Register a label (so it shows in settings and can take a budget). */
+export async function registerLabelAction(slugRaw: string): Promise<ActionResult> {
+  const slug = normalizeLabel(slugRaw);
+  if (!slug) return { ok: false, error: "Use a short label: letters, digits, - or _." };
+
+  const res = await registerLabel(slug);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+/** Remove a label from the registry. The tag stays on any tasks that carry it. */
+export async function removeLabelAction(slugRaw: string): Promise<ActionResult> {
+  const slug = normalizeLabel(slugRaw);
+  if (!slug) return { ok: false, error: "Unknown label." };
+
+  const res = await removeLabel(slug);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+/** Set or replace a label's budget (registers the label if it's new). */
+export async function setBudgetAction(
+  slugRaw: string,
+  hoursRaw: number | string,
+  periodRaw: string,
+): Promise<ActionResult> {
+  const slug = normalizeLabel(slugRaw);
+  if (!slug) return { ok: false, error: "Unknown label." };
+
+  const hours = Number(hoursRaw);
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return { ok: false, error: "Budget must be a positive number of hours." };
+  }
+  if (hours > BUDGET_HOURS_MAX) return { ok: false, error: "That budget is too large." };
+  if (!isBudgetPeriod(periodRaw)) return { ok: false, error: "Pick a period." };
+
+  // Round to a tenth of an hour so the stored value stays clean (6-minute grain).
+  const rounded = Math.round(hours * 10) / 10;
+
+  const res = await setBudget(slug, rounded, periodRaw);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+/** Clear a label's budget, keeping it registered. */
+export async function clearBudgetAction(slugRaw: string): Promise<ActionResult> {
+  const slug = normalizeLabel(slugRaw);
+  if (!slug) return { ok: false, error: "Unknown label." };
+
+  const res = await clearBudget(slug);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
   return { ok: true };
 }

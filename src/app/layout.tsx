@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -56,6 +57,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="corner-controls">
           {authed && <TimezoneToggle currentTz={tz} />}
           <ThemeToggle />
+          {authed && (
+            <Link className="glyph-btn" href="/settings" aria-label="Settings" title="Settings">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3.2" />
+                <path d="M12 2.6v2.4M12 19v2.4M21.4 12H19M5 12H2.6M18.7 5.3l-1.7 1.7M7 17l-1.7 1.7M18.7 18.7 17 17M7 7 5.3 5.3" />
+              </svg>
+            </Link>
+          )}
           {authed && <LogoutButton />}
         </div>
         <main className="flex min-h-0 flex-1 flex-col px-6 pb-6 pt-10 sm:px-8">{children}</main>

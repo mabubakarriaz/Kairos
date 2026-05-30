@@ -186,6 +186,8 @@ Each role has a dark-scene equivalent, also warm-tinted. Notable shifts: **Deep 
 
 **The Warm-Neutral Rule.** Every neutral is tinted toward warm (chroma ~0.005). `#000` and `#fff` are forbidden. Slate, cool grey, and "Tailwind zinc" are forbidden. The palette's temperature is the brand.
 
+**The Labels-Are-Type-Not-Color Rule.** Labels are distinguished by their *name*, never by a per-label color. There is no label palette, no colored chips, no swatch picker. A label renders as a tabular-mono slug (with the `#` sigil where the surface invites it), tinted Burnt Ochre purely to say "this is a label", carrying no per-label meaning. A rainbow of label colors would shatter the amber + graphite + ember triad, so it is refused. Budget consumption reuses the existing roles: amber is the work consumed, graphite is the open allowance, Ember is the overrun.
+
 ## 3. Typography
 
 **Display & Body Font:** Inter (with `ui-sans-serif`, `system-ui`, fallback).
@@ -305,6 +307,25 @@ The block is the system's single most important surface. Every other component e
 - **Past column type:** day-of-week and date drop to `ink-faint`. The column body itself does not dim; it remains the same canvas.
 - **Empty-future-day whisper:** a single 10px uppercase tracking-0.18em line saying nothing more than a hyphen, centered. The point is that nothing is the point.
 
+### Settings Surface (labels & budgets)
+
+A deliberate second room, not chrome bolted onto the grid. Reached by a **gear glyph-btn** added to the fixed top-right corner cluster (now: tz chip · theme · settings · logout). The route is `/settings`, rendered in the same `mx-auto max-w-3xl` single column as the day view, flat and hairline-separated. No SaaS settings sprawl: no card grid, no sidebar of sections, no nested panels.
+
+- **Header:** a quiet `← back to today` link (10–11px, `ink-faint` → `ink`) above the page title, which is the only **Display** element on the surface (the Single-Display Rule still holds, scoped per page).
+- **Sections** stack vertically, separated by a 1px Hairline top border, each titled with a **Label**-style heading (11px, uppercase, tracking-0.12em, `ink-muted`).
+- **Labels region:** a one-line composer (`#` sigil + mono input + `↵ add` hint) that lifts to the Composer ring on focus, above a flat list. Each row is a mono `#slug` tag, a budget cell that reads `40h /wk` (or `set budget`), and a ghost remove X that appears on row hover. Editing a budget swaps the cell in place for an inline editor (mono hours input + four period chips Day/Week/Month/Quarter + `↵ save` / `clear`), never a modal. Free-text tags already on tasks but not yet registered appear under a faint `in use, not yet added` row as one-tap promotion pills.
+
+### Budget Meter (the budgets read)
+
+The answer to "am I over?" without a single ring, tile, or streak. Built on the same **track + fill** vocabulary as the month-cell share bar.
+
+- **Track:** a 4px full-width capsule in **Graphite Mist** (`--free` at ~26%), signifying the open allowance. Refused: an emerald or green "good/bad" bar.
+- **Fill:** **Deep Ochre** (`--accent` at ~72%) from the left, width = consumed share. Amber is the work, here too.
+- **Over budget:** the bar rescales so its full width is the *used* total; the budget sits as a **tick** (a 1.5px canvas-colored gap) partway along, and the overrun spills past it as an **Ember** (`--now` at ~85%) tail. This is the only place Ember signifies over-budget; it is legitimate because the now-line (Ember's home) never appears on the settings surface, so the One-Ember Rule holds per screen.
+- **Figures row:** mono, above the bar. `used 31h 30m · 8h 30m left`, or when over, `used 24h / 20h · 4h over` with the trailing verdict in Ember. No icons.
+- **Range:** a unit selector (Day / Week / Month / Quarter chips) plus prev / now / next glyph-btns re-bases every meter; budgets pro-rate by days across units, and read exactly when the range unit matches the budget's base period.
+- **Empty:** when no label carries a budget, a single quiet line, `Set a budget on a label to track it here.` No placeholder meters.
+
 ## 6. Do's and Don'ts
 
 ### Do:
@@ -332,9 +353,10 @@ The block is the system's single most important surface. Every other component e
 - **Don't** use `#000`, `#fff`, or any neutral that isn't warm-tinted (chroma ~0.005). Slate, cool grey, and Tailwind zinc are forbidden.
 - **Don't** introduce blue, teal, emerald, violet, or any color outside the amber + graphite + red-ochre triad. If a state needs to signify, signify by type weight, position, or hairline, not by adding a new hue.
 - **Don't** wrap surfaces in cards. The canvas is the container. Nested cards are always wrong; flat cards are usually unnecessary.
-- **Don't** add a top app-bar, sidebar, or nav rail. The app's chrome is two corner glyphs and a date heading. That is the whole shell.
+- **Don't** add a top app-bar, sidebar, or nav rail. The app's chrome is the fixed top-right corner cluster (tz chip · theme · settings gear · logout) plus a date heading. `/settings` is a separate room reached by the gear, not a panel docked onto the grid.
 - **Don't** animate layout properties (width, height, top, left, margin). Use transform and opacity. Use `ease-snap`. No bounce, no elastic.
-- **Don't** add modal dialogs. The composer is inline. Delete is immediate (an inline-undo affordance is a future craft pass, not a modal warning).
+- **Don't** add modal dialogs. The composer is inline; the budget editor is inline; label removal is immediate (an inline-undo affordance is a future craft pass, not a modal warning).
+- **Don't** color-code labels or show budgets as rings, gauges, big-number tiles, or streaks. Labels are type, not color; budgets are hairline meters (graphite track, amber fill, Ember overrun). See the Labels-Are-Type-Not-Color Rule and the Budget Meter spec.
 - **Don't** add a "productivity dashboard" header zone above the grid. The grid is the page. Anything that competes with it for vertical attention is wrong.
 - **Don't** use em dashes in any user-visible copy. Use commas, colons, semicolons, periods, or parentheses. (`--` is also out.)
 - **Don't** use the **flat, equal-weight hierarchy** of everything competing for attention at the same scale. The day grid is the hero; everything else is staff.

@@ -28,6 +28,21 @@ export interface FreeSlot {
   minutes: number;
 }
 
+/** The base period a label budget is expressed in. The budget view re-bases it
+ *  to whatever range is on screen (see src/lib/budgets.ts). */
+export type BudgetPeriod = "day" | "week" | "month" | "quarter";
+
+/**
+ * A registered label. `tags` on a task stay free-text; this is the optional
+ * managed overlay. A label is "tracked" when it carries a budget — both
+ * `budgetHours` and `budgetPeriod` are non-null together, or both null.
+ */
+export interface Label {
+  slug: string;
+  budgetHours: number | null;
+  budgetPeriod: BudgetPeriod | null;
+}
+
 export interface DaySchedule {
   date: string; // yyyy-mm-dd
   dayStartUtc: string;

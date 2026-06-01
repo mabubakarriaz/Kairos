@@ -94,6 +94,7 @@ export function InlineComposer({ date, topMin, durMin, recentTags, onClose, onSu
   }, [onClose]);
 
   async function submit() {
+    if (pending) return; // guard against a double-commit from rapid Enter presses
     setError(null);
     const trimmed = title.trim();
     if (!trimmed) {

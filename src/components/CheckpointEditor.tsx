@@ -68,6 +68,7 @@ export function CheckpointEditor(props: Props) {
   }, [props]);
 
   async function commit() {
+    if (pending) return; // guard against a double-commit from rapid Enter presses
     setError(null);
     const trimmed = label.trim();
     if (!trimmed) {

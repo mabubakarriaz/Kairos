@@ -239,6 +239,14 @@
   .block-kairos {
     @apply cursor-grab;
   }
+  /* Keyboard focus — the block is a focusable, arrow-operable control (move /
+     resize / edit / remove). The accent ring is the same vocabulary as every
+     other focusable affordance; it lifts above neighbours like hover. */
+  .block-kairos:focus-visible {
+    outline: none;
+    z-index: 16;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
   .block-dragging {
     @apply cursor-grabbing;
     z-index: 30;
@@ -401,8 +409,10 @@
     color: rgb(var(--text));
   }
 
+  /* 24×24 hit area (WCAG 2.2 §2.5.8 minimum) with a 12px glyph centered inside —
+     the visual mark stays small; only the tap target grows for touch. */
   .block-del {
-    @apply absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-sm opacity-0;
+    @apply absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-sm opacity-0;
     @apply transition-opacity duration-150;
     color: rgb(var(--accent-strong) / 0.75);
   }
@@ -1365,10 +1375,10 @@
     @apply text-3xl font-semibold leading-none text-ink;
     letter-spacing: -0.02em;
   }
+  /* Quiet Ember text, not a boxed alert (the One-Ember Rule): the headline rides
+     --now, the detail is muted. No fill, no border. */
   .settings-error {
-    @apply mb-6 rounded-md px-4 py-3 text-sm text-ink;
-    border: 1px solid rgb(var(--now) / 0.4);
-    background-color: rgb(var(--now) / 0.06);
+    @apply mb-6 px-1 text-sm text-ink;
   }
   .settings-section {
     @apply flex flex-col gap-4 py-8;

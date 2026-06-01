@@ -445,12 +445,11 @@ function errMsg(e: unknown): string {
 
 function LoadErrorNotice({ errors }: { errors: string[] }) {
   if (!errors.length) return null;
+  // Quiet Ember text, never a boxed alert (the One-Ember Rule): no fill, no
+  // border, no icon. A failed load reads as a typographic line above the grid.
   return (
-    <div
-      role="alert"
-      className="mb-5 rounded-md border border-now/40 bg-now/[0.06] px-4 py-3 text-sm text-ink"
-    >
-      <p className="font-medium text-now">Couldn&rsquo;t load the schedule.</p>
+    <div role="alert" className="mb-5 px-1">
+      <p className="text-sm font-medium text-now">Couldn&rsquo;t load the schedule.</p>
       <p className="mt-1 text-xs text-ink-muted">{errors.join(" · ")}</p>
       <p className="mt-1.5 text-[11px] text-ink-faint">
         Set <span className="num">SUPABASE_URL</span> and{" "}

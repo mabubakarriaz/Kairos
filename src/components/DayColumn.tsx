@@ -6,6 +6,7 @@ import { deleteBlockAction, editBlockAction, rescheduleAction } from "@/app/acti
 import {
   DAY_MINUTES,
   PX_PER_MIN,
+  SLOT_MINUTES,
   blockTimeMeta,
   fmtClock,
   fmtCountdown,
@@ -82,6 +83,13 @@ export function DayColumn({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cpEdit, setCpEdit] = useState<CheckpointEditState>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Keyboard move/resize: an uncommitted local adjustment shown immediately,
+  // committed on a short debounce so a burst of arrow presses fires one save.
+  const [keyAdjust, setKeyAdjust] = useState<
+    { id: string; mode: "move" | "resize"; topMin: number; durMin: number } | null
+  >(null);
+  const keyAdjustRef = useRef<typeof keyAdjust>(null);
+  const keyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -265,9 +273,21 @@ export function DayColumn({
       setDrag({ id: block.id, mode: "move", topMin: liveTop, durMin });
     };
 
-    const onUp = async () => {
+    const teardown = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+    };
+
+    // Interrupted gesture (touch taken over, tab hidden) → abandon the drag
+    // without committing, so the block never gets stuck in drag state.
+    const onCancel = () => {
+      teardown();
+      setDrag(null);
+    };
+
+    const onUp = async () => {
+      teardown();
 
       if (!moved) {
         // No drag → open the title editor on this block.
@@ -297,6 +317,7 @@ export function DayColumn({
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
   }
 
   // Largest duration this block can grow to, given the next neighbor.
@@ -340,9 +361,19 @@ export function DayColumn({
       setDrag({ id: block.id, mode: "resize", topMin, durMin: liveDur });
     };
 
-    const onUp = async () => {
+    const teardown = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+    };
+
+    const onCancel = () => {
+      teardown();
+      setDrag(null);
+    };
+
+    const onUp = async () => {
+      teardown();
 
       if (!moved || liveDur === origDur) {
         setDrag(null);
@@ -366,6 +397,7 @@ export function DayColumn({
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
   }
 
   async function commitEdit(
@@ -390,8 +422,8 @@ export function DayColumn({
     }
   }
 
-  function requestRemove(e: React.MouseEvent, block: ScheduledBlock) {
-    e.stopPropagation();
+  function beginRemove(block: ScheduledBlock) {
+    if (pendingId) return; // a reschedule/resize is in flight — don't race it
     // Recurring blocks open the inline confirm strip; one-shot blocks delete
     // immediately (the existing immediate-and-final behaviour).
     if (block.seriesId) {
@@ -399,6 +431,11 @@ export function DayColumn({
       return;
     }
     void commitRemove(block.id, "occurrence");
+  }
+
+  function requestRemove(e: React.MouseEvent, block: ScheduledBlock) {
+    e.stopPropagation();
+    beginRemove(block);
   }
 
   async function commitRemove(id: string, scope: "occurrence" | "future") {
@@ -412,6 +449,104 @@ export function DayColumn({
       router.refresh();
     }
   }
+
+  function cancelKeyAdjust() {
+    if (keyTimer.current) {
+      clearTimeout(keyTimer.current);
+      keyTimer.current = null;
+    }
+    keyAdjustRef.current = null;
+    setKeyAdjust(null);
+  }
+
+  async function commitKeyAdjust(block: ScheduledBlock) {
+    keyTimer.current = null;
+    const adj = keyAdjustRef.current;
+    if (!adj || adj.id !== block.id) return;
+    const origTop = minutesFromDayStart(block.startUtc, dayStartUtc);
+    const origDur = durationMin(block);
+    if (adj.topMin === origTop && adj.durMin === origDur) {
+      cancelKeyAdjust();
+      return;
+    }
+    const newStart = new Date(dayStartMs + adj.topMin * 60_000).toISOString();
+    const newEnd = new Date(dayStartMs + (adj.topMin + adj.durMin) * 60_000).toISOString();
+    setPendingId(block.id);
+    const res = await rescheduleAction(block.id, newStart, newEnd);
+    setPendingId(null);
+    keyAdjustRef.current = null;
+    setKeyAdjust(null);
+    if (!res.ok) setError(res.error ?? "Could not reschedule.");
+    else {
+      setError(null);
+      router.refresh();
+    }
+  }
+
+  // Keyboard parity for the bespoke drag engine: arrows move (±15m), Shift+arrows
+  // resize, Enter/Space edits the title, Delete/Backspace removes, Escape reverts
+  // an uncommitted nudge. Saves are debounced so a burst of presses is one write.
+  function onBlockKeyDown(e: React.KeyboardEvent, block: ScheduledBlock) {
+    if (block.source !== "kairos" || isPast || pendingId) return;
+    if (editingId === block.id) return; // the title input owns keys while editing
+
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      cancelKeyAdjust();
+      setComposer(null);
+      setEditingId(block.id);
+      return;
+    }
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      cancelKeyAdjust();
+      beginRemove(block);
+      return;
+    }
+    if (e.key === "Escape") {
+      if (keyAdjustRef.current?.id === block.id) {
+        e.preventDefault();
+        cancelKeyAdjust();
+      }
+      return;
+    }
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+
+    e.preventDefault();
+    const base =
+      keyAdjustRef.current?.id === block.id
+        ? keyAdjustRef.current
+        : {
+            id: block.id,
+            mode: "move" as const,
+            topMin: minutesFromDayStart(block.startUtc, dayStartUtc),
+            durMin: durationMin(block),
+          };
+    const dir = e.key === "ArrowUp" ? -1 : 1;
+    let next: typeof base;
+    if (e.shiftKey) {
+      const cap = maxDurAt(base.topMin, block.id);
+      const durMin = Math.max(SLOT_MINUTES, Math.min(cap, base.durMin + dir * SLOT_MINUTES));
+      next = { ...base, mode: "resize", durMin };
+    } else {
+      const topMin = Math.max(
+        0,
+        Math.min(DAY_MINUTES - base.durMin, base.topMin + dir * SLOT_MINUTES),
+      );
+      next = { ...base, mode: "move", topMin };
+    }
+    keyAdjustRef.current = next;
+    setKeyAdjust(next);
+    if (keyTimer.current) clearTimeout(keyTimer.current);
+    keyTimer.current = setTimeout(() => void commitKeyAdjust(block), 450);
+  }
+
+  // Flush any pending keyboard commit if the component unmounts mid-nudge.
+  useEffect(() => {
+    return () => {
+      if (keyTimer.current) clearTimeout(keyTimer.current);
+    };
+  }, []);
 
   // Hide the very last free slot if it's the post-day filler past 23:45ish.
   const visibleFreeSlots = freeSlots.filter((s) => s.minutes >= 15);
@@ -555,8 +690,17 @@ export function DayColumn({
           {blocks.map((b) => {
             const isDragging = drag?.id === b.id;
             const isResizing = isDragging && drag!.mode === "resize";
-            const topMin = isDragging ? drag!.topMin : minutesFromDayStart(b.startUtc, dayStartUtc);
-            const dur = isDragging ? drag!.durMin : durationMin(b);
+            const isKeyAdjusting = !isDragging && keyAdjust?.id === b.id;
+            const topMin = isDragging
+              ? drag!.topMin
+              : isKeyAdjusting
+                ? keyAdjust!.topMin
+                : minutesFromDayStart(b.startUtc, dayStartUtc);
+            const dur = isDragging
+              ? drag!.durMin
+              : isKeyAdjusting
+                ? keyAdjust!.durMin
+                : durationMin(b);
             const height = Math.max(dur * PX_PER_MIN, 22);
             const movable = b.source === "kairos" && !isPast;
             const isEditing = editingId === b.id;
@@ -584,6 +728,14 @@ export function DayColumn({
                 className={cls}
                 style={{ top: topMin * PX_PER_MIN, height }}
                 onPointerDown={(e) => startDrag(e, b)}
+                onKeyDown={movable ? (e) => onBlockKeyDown(e, b) : undefined}
+                tabIndex={movable ? 0 : undefined}
+                aria-label={
+                  movable
+                    ? `${b.title || "Untitled"}, ${fmtClock(topMin)} to ${fmtClock(topMin + dur)}`
+                    : undefined
+                }
+                aria-keyshortcuts={movable ? "ArrowUp ArrowDown Shift+ArrowUp Enter Delete" : undefined}
               >
                 {isActive && !isEditing && (
                   <span className="block-now-glyph" aria-label="Now">

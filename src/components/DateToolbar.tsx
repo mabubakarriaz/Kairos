@@ -88,7 +88,7 @@ export function DateToolbar({
       </div>
 
       <div className="flex items-center gap-3 pb-1">
-        <nav aria-label="View" className="flex items-center gap-0.5" role="group">
+        <nav aria-label="View" className="flex items-center gap-0.5">
           {(Object.keys(VIEW_LABEL) as View[]).map((v) => (
             <ViewToggleLink
               key={v}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-28T00:00:00Z",
+  "generatedAt": "2026-06-01T00:00:00Z",
   "title": "Design System: Kairos",
   "extensions": {
     "colorMeta": {
@@ -200,6 +200,30 @@
       "description": "1px Ember hairline + 6px gutter dot + tiny mono timestamp. Used once per screen; never animated with a transition (the position is the time).",
       "html": "<div class=\"ds-now-wrap\"><span class=\"ds-now-label\">14:32</span><div class=\"ds-now-line\"></div></div>",
       "css": ".ds-now-wrap { position: relative; width: 100%; min-height: 16px; padding-left: 48px; box-sizing: border-box; } .ds-now-line { position: absolute; left: 48px; right: 4px; top: 8px; height: 1px; background: #c0543a; } .ds-now-line::before { content: ''; position: absolute; left: -6px; top: -3px; width: 6px; height: 6px; border-radius: 9999px; background: #c0543a; } .ds-now-label { position: absolute; left: 0; top: 0; width: 48px; padding-right: 12px; text-align: right; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1; font-weight: 600; letter-spacing: 0.02em; color: #c0543a; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Checkpoint",
+      "kind": "custom",
+      "refersTo": "checkpoint-tag",
+      "description": "A user-placed named moment on the grid. A solid hairline interrupted by a right-anchored label tag (architectural dimension-line convention). Third channel: neither Ember (now) nor graphite-dashed (free).",
+      "html": "<div class=\"ds-checkpoint\"><span class=\"ds-checkpoint-tag\"><span class=\"ds-checkpoint-time\">14:00</span><span class=\"ds-checkpoint-sep\">&middot;</span><span class=\"ds-checkpoint-label\">standup</span></span></div>",
+      "css": ".ds-checkpoint { position: relative; box-sizing: border-box; height: 1px; min-width: 280px; margin: 24px 0; background-color: #cfc8b8; } .ds-checkpoint-tag { position: absolute; right: 4px; top: 0; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 8px; padding: 0 6px; background-color: #fefdfa; color: #796e5f; cursor: pointer; transition: color 200ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-checkpoint:hover .ds-checkpoint-tag { color: #1f1b14; } .ds-checkpoint-time { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1; font-variant-numeric: tabular-nums; } .ds-checkpoint-sep { font-size: 10px; color: rgba(121, 110, 95, 0.55); } .ds-checkpoint-label { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 10px; font-weight: 500; line-height: 1; letter-spacing: 0.12em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Budget Meter",
+      "kind": "custom",
+      "refersTo": "budget-meter",
+      "description": "The 'am I over?' read with no ring or tile. Graphite track (open allowance) + Deep Ochre fill (consumed share); over-budget spills an Ember tail past a canvas-colored tick.",
+      "html": "<div class=\"ds-budget\"><div class=\"ds-budget-figures\"><span class=\"ds-budget-amt\">used 31h 30m</span><span class=\"ds-budget-sep\">&middot;</span><span>8h 30m left</span></div><div class=\"ds-budget-bar\"><div class=\"ds-budget-fill\"></div></div></div>",
+      "css": ".ds-budget { min-width: 280px; } .ds-budget-figures { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 11px; line-height: 1; font-variant-numeric: tabular-nums; color: #796e5f; } .ds-budget-amt { color: #1f1b14; font-weight: 500; } .ds-budget-sep { color: rgba(121, 110, 95, 0.55); } .ds-budget-bar { position: relative; width: 100%; height: 4px; border-radius: 9999px; overflow: hidden; background-color: rgba(111, 121, 137, 0.26); } .ds-budget-fill { position: absolute; left: 0; top: 0; height: 100%; width: 78%; background-color: rgba(176, 122, 53, 0.72); }"
+    },
+    {
+      "name": "Label Filter Pill",
+      "kind": "chip",
+      "refersTo": "filter-pill",
+      "description": "A status-line disclosure trigger (not a menu). Reads 'labels all' / 'labels #deep-work' / 'labels 3 active'; opens a popover of aria-pressed toggle buttons.",
+      "html": "<button class=\"ds-filter-pill\" aria-expanded=\"false\"><span class=\"ds-filter-mark\"></span><span class=\"ds-filter-lead\">labels</span><span class=\"ds-filter-summary\">all</span></button>",
+      "css": ".ds-filter-pill { display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; padding: 4px 6px; border: 0; border-radius: 2px; background: transparent; color: #5c5346; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 11px; line-height: 1; cursor: pointer; transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-filter-pill:hover { color: #1f1b14; } .ds-filter-pill:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.5); } .ds-filter-mark { width: 6px; height: 6px; border-radius: 9999px; background-color: rgba(121, 110, 95, 0.4); } .ds-filter-summary { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-variant-numeric: tabular-nums; color: #1f1b14; }"
     }
   ],
   "narrative": {
@@ -212,12 +236,14 @@
       "Mono numerals everywhere. Every time, duration, hour, and date rides JetBrains Mono with tabular-nums.",
       "Quiet on rest, expressive on touch. Static views feel typographic. Personality lives in interaction.",
       "No cards. Time blocks are filled rectangles; the canvas itself is the container.",
-      "Hairlines for grid and free slots. 1px lines do the structural work; no boxes, no shadows at rest."
+      "Hairlines for grid and free slots. 1px lines do the structural work; no boxes, no shadows at rest.",
+      "Four scales, one grid. Day, 5-day, week, and month share a single ruled-page language; the day grid is the hero and the others are the same grammar at a different zoom.",
+      "The day is gated, not walled. A single-password login renders the schedule you're locked out of as a live, dimmed ghost grid behind the field, then raises the light on unlock."
     ],
     "rules": [
       { "name": "The Ochre-or-Nothing Rule", "body": "The single chromatic accent on any chrome (date, controls, focus, ring, link) is Deep Ochre or Burnt Ochre. Never blue, never emerald, never violet. If a surface needs to feel 'active' or 'available', use type weight, position, or hairline density. The block is the only surface allowed to wear a saturated wash.", "section": "colors" },
       { "name": "The Graphite-Not-Emerald Rule", "body": "Free slots and 'available time' signage are graphite, never green. Green is the reflexive choice; refusing it is the point. Graphite recedes, which is what a free slot is: an absence of work, not a celebration.", "section": "colors" },
-      { "name": "The One Ember Rule", "body": "Red-ochre #c0543a is used twice maximum per screen: once on the now-line, optionally once on the 'X left' tail. Never on errors, never on delete, never on warnings. A second Ember mark on screen dilutes the meaning of the first.", "section": "colors" },
+      { "name": "The One Ember Rule", "body": "Persistent, filled Ember belongs to one thing only: the now-mark cluster (now-line, gutter label, active-block inset ring, and 'X left' tail are channels of the single fact 'now'). Ember is allowed in three narrow, non-competing roles: an inline error string (text only, never a filled or bordered alert box), a destructive hover on a delete affordance (transient, pointer-only), and the budget overrun tail on the settings surface (where the now-line never appears). The forbidden move is a resting, boxed, or decorative Ember that reads as a second 'now'.", "section": "colors" },
       { "name": "The Warm-Neutral Rule", "body": "Every neutral is tinted toward warm (chroma ~0.005). #000 and #fff are forbidden. Slate, cool grey, and 'Tailwind zinc' are forbidden. The palette's temperature is the brand.", "section": "colors" },
       { "name": "The Tabular-Numeral Rule", "body": "Any numeral that names a quantity of time (hours, minutes, durations, dates, counts) is set in JetBrains Mono with tabular-nums. Every such element carries .num or time or .block-time or .hour-label. Inter is forbidden for numerals.", "section": "typography" },
       { "name": "The Tight-Track Rule", "body": "Display and title type are tracked tighter than the Inter default (-0.02em for display, -0.005em for title). Labels and numerals are tracked looser (+0.02 to +0.12em). Never flat-track everything; the contrast in tracking is part of the hierarchy.", "section": "typography" },
@@ -236,7 +262,9 @@
       "Do use ease-snap (cubic-bezier(0.22, 1, 0.36, 1), ease-out-quart) for all transitions. State transitions only; never animate layout properties.",
       "Do keep the corner cluster (tz chip + theme glyph) fixed at top-right. The app has no header bar; the corner glyph IS the chrome.",
       "Do honor prefers-reduced-motion. The reduce-motion query strips all transition durations to 1ms.",
-      "Do cap body line length at 65-75ch in any long-form copy region."
+      "Do cap body line length at 65-75ch in any long-form copy region.",
+      "Do give every interactive control a visible focus state (the WCAG floor). Chrome buttons use the offset accent ring; inline editor pills and chips use a flush box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55). A keyboard-reachable control with no :focus-visible is a bug.",
+      "Do keep ARIA honest: a role is a promise of behavior. The label filter is a disclosure of aria-pressed toggle buttons, not a role=menu; the month grid is a set of day-links, not a role=grid."
     ],
     "donts": [
       "Don't reintroduce the generic SaaS / Next.js-template look (soft slate + blue accent + rounded cards). The redesign existed to escape it.",
@@ -251,10 +279,13 @@
       "Don't wrap surfaces in cards. The canvas is the container. Nested cards are always wrong.",
       "Don't add a top app-bar, sidebar, or nav rail. The corner glyphs and date heading are the whole shell.",
       "Don't animate layout properties (width, height, top, left, margin). Use transform and opacity.",
-      "Don't add modal dialogs. The composer is inline. Delete is immediate.",
+      "Don't add modal dialogs. The composer is inline, the budget editor is inline, and deleting a recurring block uses an inline 'just this / + future' confirm strip, never a modal warning.",
       "Don't add a 'productivity dashboard' header zone above the grid. The grid is the page.",
       "Don't use em dashes in any user-visible copy. Use commas, colons, semicolons, periods, or parentheses.",
-      "Don't use the flat, equal-weight hierarchy of everything competing for attention at the same scale. The day grid is the hero; everything else is staff."
+      "Don't use the flat, equal-weight hierarchy of everything competing for attention at the same scale. The day grid is the hero; everything else is staff.",
+      "Don't wrap a transient error in a filled or bordered alert box. Errors are a quiet Ember text line (no fill, no border, no icon), per the One Ember Rule.",
+      "Don't declare a widget role you don't implement: no role=grid without arrow-key cell navigation, no role=menu / menuitemcheckbox on a multi-select filter. Over-promised ARIA is worse than none.",
+      "Don't color-code the week-view block tags. They are uniform graphite density dots (plus +N), never a per-label palette."
     ]
   }
 }

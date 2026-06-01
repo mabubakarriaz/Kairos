@@ -13,10 +13,19 @@ and lets you drag tasks around to reschedule them.
   Each block shows its time range and duration (e.g. `10:00–11:30 · 1h 30m`),
   and the duration swaps to a live `42m left` countdown when the now-line is
   crossing it.
-- **Week view** — five days side-by-side; drag a block between columns to move
-  it to another day.
+- **More time scales** — 5-day, week, and month views: the same grid language at
+  wider zoom. In the multi-day views, drag a block between columns to move it to
+  another day; the month is a navigator into any single day.
 - **Inline composer** — click any empty slot to drop a block right there, or
   press `n` to open one at the next free slot.
+- **Recurring tasks** — repeat a block daily, on weekdays, weekly, or every N days;
+  deleting a recurring block asks whether to remove just that one or all future ones.
+- **Checkpoints** — drop a named moment on the grid (press `c`), like a standup or a
+  school run, distinct from a timed block.
+- **Labels & budgets** — tag tasks, filter the grid by label, and set optional time
+  budgets per label in a quiet `/settings` room.
+- **Time zones** — view the schedule in your zone or UTC from a corner chip; times
+  are stored in UTC underneath.
 - **Drag to reschedule** — grab a block and drop it on a new time (snaps to 15 min);
   drag the bottom edge to resize.
 - **Click a title to rename** — in-place edit, no dialog.
@@ -58,10 +67,13 @@ You need a Supabase project with the schema applied first — see
 
 ## Security note
 
-There's no login — anyone with the URL sees the same schedule. But the database is
-**not** publicly writable: Row-Level Security is on with no policies, and the app
-only ever talks to Supabase from the server using the service-role key (never sent
-to the browser, never committed). Keep that key secret.
+The app is gated by a single password when you set `APP_PASSWORD` and `AUTH_SECRET`
+(repeated wrong guesses lock the form for a while); it's a personal single-user gate,
+not multi-user accounts. Leave those unset and the app is open, anyone with the URL
+sees the same schedule. Either way the database is **not** publicly writable:
+Row-Level Security is on with no policies, and the app only ever talks to Supabase
+from the server using the service-role key (never sent to the browser, never
+committed). Keep that key secret.
 
 ## Scripts
 

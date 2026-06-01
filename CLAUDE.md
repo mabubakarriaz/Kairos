@@ -6,7 +6,12 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 A time-blocking todo app: tasks live on a Google-Calendar-style **day schedule**, not
 a flat list. The signature loop is **add a task with a time range → it renders as a
-block → drag to reschedule → see the best free slots**. Single-user, **no login**.
+block → drag to reschedule → see the best free slots**. The day grid is the hero;
+**5-day, week, and month** views are the same grid language at wider zoom. Tasks
+support **simple recurrence** (daily / weekdays / weekly / every-N), the grid carries
+**checkpoints** (named moments), and labels carry optional **time budgets** (a
+`/settings` room). Single-user, gated by a **single password** (`APP_PASSWORD` +
+`AUTH_SECRET`); not multi-user accounts.
 
 This repo was rebuilt from a former .NET/Aspire stack into a simpler one — don't
 reintroduce .NET, Docker Compose, observability stacks, an MCP server, or Google
@@ -76,8 +81,11 @@ docs/                  # SUPABASE_SETUP, VERCEL_SETUP, DEPLOYMENT
   block." Don't re-check overlap in TS.
 - **Free slots are SQL.** `free_slots(from, to)` does multirange subtraction in
   Postgres. TS only ranks/takes top-N — don't reimplement gap-finding in JS.
-- **UTC everywhere (MVP).** All times stored and displayed in UTC; the day window is
-  `[date 00:00Z, +24h)`. Localized timezones are a future upgrade (schema is `timestamptz`).
+- **Stored in UTC, viewed in a chosen zone.** All times are stored UTC (`timestamptz`).
+  The displayed day window is resolved in the user's selected zone via a cookie-driven
+  corner chip (currently Karachi ↔ UTC, default `Asia/Karachi`); see `src/lib/timezone.ts`
+  (`zonedDayStartUtc`, `todayInZone`, DST-aware). The window is `[local-midnight, +24h)`
+  resolved to UTC instants, not a bare `00:00Z`.
 - **Validate in the Server Action** before touching the DB (title present, end >
   start, estimate positive). Actions return `{ ok, error? }`; never throw across to
   the client.

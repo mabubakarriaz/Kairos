@@ -649,6 +649,22 @@
   .checkpoint-editor-error {
     color: rgb(var(--now));
   }
+  /* The remove affordance — a quiet text action mirroring .budget-editor-clear:
+     Ember on hover (the editor's destructive-text convention), accent ring on
+     keyboard focus. No inline styles. */
+  .checkpoint-editor-remove {
+    padding: 0;
+    cursor: pointer;
+    transition: color 150ms var(--ease-snap);
+  }
+  .checkpoint-editor-remove:hover {
+    color: rgb(var(--now));
+  }
+  .checkpoint-editor-remove:focus-visible {
+    outline: none;
+    color: rgb(var(--text));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
 
   /* Week-view tuning — narrower columns, no room for the right-side tag, so
      hide the label/time and lean on the line + hover tooltip. */
@@ -1140,6 +1156,18 @@
   .composer-repeat-pill[data-active]:hover {
     background-color: rgb(var(--accent) / 0.22);
   }
+  /* Focus visibility (WCAG floor) — a 1px accent ring, the same vocabulary the
+     glyph-btns and recent-pills use. The interval pill is a span whose only
+     tab-stop is its inner input, so it rings on focus-within instead. */
+  .composer-repeat-pill:focus-visible {
+    outline: none;
+    color: rgb(var(--accent-strong));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.5);
+  }
+  .composer-repeat-interval:focus-within {
+    color: rgb(var(--accent-strong));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.5);
+  }
   .composer-repeat-pill[disabled] {
     @apply opacity-50;
   }
@@ -1489,6 +1517,11 @@
     color: rgb(var(--accent-strong));
     background-color: rgb(var(--accent) / 0.16);
   }
+  .budget-period-chip:focus-visible {
+    outline: none;
+    color: rgb(var(--accent-strong));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
   .budget-editor-actions {
     @apply ml-auto inline-flex items-center gap-2;
   }
@@ -1502,6 +1535,10 @@
   .budget-editor-save:hover {
     background-color: rgb(var(--accent) / 0.2);
   }
+  .budget-editor-save:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
   .budget-editor-clear {
     @apply text-[10px] uppercase leading-none;
     letter-spacing: 0.14em;
@@ -1511,6 +1548,11 @@
   .budget-editor-clear:hover {
     color: rgb(var(--now));
   }
+  .budget-editor-clear:focus-visible {
+    outline: none;
+    color: rgb(var(--text));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
   .budget-editor-cancel {
     @apply inline-flex h-5 w-5 items-center justify-center rounded-sm;
     @apply transition-colors duration-150 ease-snap;
@@ -1518,6 +1560,11 @@
   }
   .budget-editor-cancel:hover {
     color: rgb(var(--text));
+  }
+  .budget-editor-cancel:focus-visible {
+    outline: none;
+    color: rgb(var(--text));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
   }
 
   /* Untracked labels — free-text tags already on tasks, offered for promotion. */
@@ -1541,6 +1588,11 @@
   .label-untracked-pill:hover {
     color: rgb(var(--accent-strong));
     background-color: rgb(var(--accent) / 0.12);
+  }
+  .label-untracked-pill:focus-visible {
+    outline: none;
+    color: rgb(var(--accent-strong));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
   }
   .label-untracked-plus {
     @apply text-[12px] leading-none;

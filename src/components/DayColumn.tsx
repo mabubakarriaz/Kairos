@@ -85,16 +85,32 @@ export function DayColumn({
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Current-time line — refresh every 30s while viewing today.
+  // Current-time line. "The position is the time" — so we re-arm to the next
+  // minute boundary (rather than a fixed interval) so the displayed HH:MM flips
+  // exactly on the minute instead of drifting. The app is opened many times a
+  // day, so a tab returning from the background (laptop wake, tab switch) also
+  // re-syncs immediately rather than showing a stale now-mark for up to a minute.
   useEffect(() => {
     if (!isToday) {
       setNowMin(null);
       return;
     }
-    const tick = () => setNowMin((Date.now() - dayStartMs) / 60_000);
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      clearTimeout(timer);
+      setNowMin((Date.now() - dayStartMs) / 60_000);
+      const msToNextMinute = 60_000 - (Date.now() % 60_000);
+      timer = setTimeout(tick, msToNextMinute + 50);
+    };
     tick();
-    const id = setInterval(tick, 30_000);
-    return () => clearInterval(id);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [isToday, dayStartMs]);
 
   // First-paint scroll. On today, if a block is currently in flight, center the
@@ -412,7 +428,7 @@ export function DayColumn({
       {error && (
         <p
           role="alert"
-          className="mb-3 rounded-md border border-now/40 bg-now/[0.07] px-3 py-2 text-xs font-medium text-now"
+          className="mb-3 px-1 text-xs font-medium text-now"
         >
           {error}
         </p>

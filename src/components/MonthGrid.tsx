@@ -63,7 +63,10 @@ export function MonthGrid({
           </span>
         ))}
       </div>
-      <div className="month-canvas" role="grid" aria-label="Month grid">
+      {/* A set of day-navigation links, not an interactive grid widget: each cell
+          is a labeled <Link> to the day view, with no row/arrow-key grid model to
+          back a role="grid" contract. Honest link semantics over a broken grid. */}
+      <div className="month-canvas">
         {cells.map((cell) => {
           const d = new Date(`${cell.date}T00:00:00.000Z`);
           const cellMonth = d.getUTCMonth();
@@ -89,7 +92,6 @@ export function MonthGrid({
               key={cell.date}
               className="month-cell"
               href={href}
-              role="gridcell"
               data-today={isToday || undefined}
               data-past={isPast || undefined}
               data-otherMonth={!inMonth || undefined}

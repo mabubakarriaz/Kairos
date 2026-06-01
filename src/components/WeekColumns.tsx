@@ -102,10 +102,25 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
       return;
     }
     const dayStart = new Date(days[todayIdx].dayStartUtc).getTime();
-    const tick = () => setNowMin((Date.now() - dayStart) / 60_000);
+    // Re-arm to the next minute boundary so the displayed HH:MM flips exactly on
+    // the minute, and re-sync when the tab returns from the background. Mirrors
+    // the day-view now-mark.
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      clearTimeout(timer);
+      setNowMin((Date.now() - dayStart) / 60_000);
+      const msToNextMinute = 60_000 - (Date.now() % 60_000);
+      timer = setTimeout(tick, msToNextMinute + 50);
+    };
     tick();
-    const id = setInterval(tick, 30_000);
-    return () => clearInterval(id);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [todayIdx, days]);
 
   useEffect(() => {
@@ -483,7 +498,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
       {error && (
         <p
           role="alert"
-          className="mb-3 rounded-md border border-now/40 bg-now/[0.07] px-3 py-2 text-xs font-medium text-now"
+          className="mb-3 px-1 text-xs font-medium text-now"
         >
           {error}
         </p>

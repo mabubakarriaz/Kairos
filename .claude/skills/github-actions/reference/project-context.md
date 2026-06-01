@@ -14,7 +14,7 @@ Cross-references the in-repo memory files:
 - **Tailwind CSS v3** — design tokens in `src/app/globals.css`.
 - **Supabase (Postgres)** — schema is checked into `supabase/migrations/`. CI doesn't talk to the DB; CD applies migrations via `supabase db push`.
 - **Vercel** — production hosting, single project, `vercel build` + `vercel deploy --prebuilt --prod`.
-- **No login, no other infra.** No Docker Compose, no .NET, no OTel, no MCP, no Google Calendar sync. **Do not reintroduce these via pipelines.** See `stack-migration-2026-05-27.md` for the full do-not-touch list.
+- **Minimal infra; a single-password gate.** A single-password login (`APP_PASSWORD` + `AUTH_SECRET`) fronts the app at runtime, but there's still no Docker Compose, no .NET, no OTel, no MCP, no Google Calendar sync. **Do not reintroduce those via pipelines.** See `stack-migration-2026-05-27.md` for the full do-not-touch list.
 
 `next build` does not prerender `/` (`export const dynamic = "force-dynamic"`), so CI builds **do not require any env vars**. The Supabase client is created lazily via `getSupabase()` and only triggers on a runtime request, never at build time.
 
@@ -84,7 +84,7 @@ These come from `deployment-live.md` and `CLAUDE.md`:
 - **Do not run real Supabase migrations in CI.** The `migrate` job is production-only. A CI dry-run on a hosted shadow DB is possible but out of scope; document the trade-off before adding one.
 - **Do not add Docker, Compose, or container-based runners.** Removed deliberately.
 - **Do not add OTel, Prometheus, or any observability collector to CI.** Out of scope.
-- **Do not add Google Calendar sync, recurring blocks (RRULE), or MCP-server jobs.** Deferred deliberately.
+- **Do not add Google Calendar sync or MCP-server jobs.** Deferred deliberately. (Recurrence shipped in-app as fixed presets; it needs no pipeline.)
 
 ## What pipelines could do (proposed, not yet built)
 

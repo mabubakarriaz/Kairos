@@ -67,7 +67,6 @@ export function LabelFilter({ filterLabels, inViewLabels }: Props) {
         className="filter-pill"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-haspopup="menu"
         data-active={hasFilter || undefined}
       >
         <span className="filter-pill-mark" aria-hidden="true" />
@@ -87,7 +86,7 @@ export function LabelFilter({ filterLabels, inViewLabels }: Props) {
         </button>
       )}
       {open && (
-        <div className="filter-popover" role="menu">
+        <div className="filter-popover">
           {universe.length === 0 ? (
             <p className="filter-popover-empty">No labels here yet. Add one when you create a task.</p>
           ) : (
@@ -100,8 +99,7 @@ export function LabelFilter({ filterLabels, inViewLabels }: Props) {
                       type="button"
                       className="filter-popover-item"
                       onClick={() => toggle(label)}
-                      role="menuitemcheckbox"
-                      aria-checked={active}
+                      aria-pressed={active}
                       data-active={active || undefined}
                     >
                       <span className="filter-popover-mark" aria-hidden="true" />

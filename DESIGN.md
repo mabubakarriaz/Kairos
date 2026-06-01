@@ -117,6 +117,24 @@ components:
     backgroundColor: "transparent"
     textColor: "{colors.ink-faint}"
     typography: "{typography.numerals}"
+  checkpoint-tag:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink-faint}"
+    typography: "{typography.label}"
+  filter-pill:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-muted}"
+    rounded: "{rounded.xs}"
+  budget-meter:
+    backgroundColor: "{colors.free}"
+    rounded: "{rounded.pill}"
+    height: "4px"
+  budget-meter-fill:
+    backgroundColor: "{colors.accent}"
+  login-input:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    typography: "{typography.title}"
 ---
 
 # Design System: Kairos
@@ -139,6 +157,8 @@ Color is a scalpel, not a paintbrush. The system uses tinted neutrals plus one a
 - **Quiet on rest, expressive on touch.** Static views feel typographic. Personality lives in interaction.
 - **No cards.** Time blocks are filled rectangles; the canvas itself is the container.
 - **Hairlines for grid and free slots.** 1px lines do the structural work; no boxes, no shadows at rest.
+- **Four scales, one grid.** Day, 5-day, week, and month share a single ruled-page language; the day grid is the hero and the others are the same grammar at a different zoom.
+- **The day is gated, not walled.** A single-password login renders the schedule you're locked out of as a live, dimmed ghost grid behind the field, time ticking without you, then raises the light on unlock.
 
 ## 2. Colors: The Amber and Graphite Palette
 
@@ -182,7 +202,7 @@ Each role has a dark-scene equivalent, also warm-tinted. Notable shifts: **Deep 
 
 **The Graphite-Not-Emerald Rule.** Free slots and "available time" signage are graphite, never green. Green is the reflexive choice; refusing it is the point. Graphite recedes, which is what a free slot is: an absence of work, not a celebration.
 
-**The One Ember Rule.** Red-ochre `#c0543a` is used twice maximum per screen: once on the now-line, optionally once on the "X left" tail. Never on errors, never on delete, never on warnings. A second Ember mark on screen dilutes the meaning of the first.
+**The One Ember Rule.** Persistent, filled Ember belongs to one thing only: the now-mark cluster (now-line, gutter label, active-block inset ring, and "X left" tail are all channels of the single fact "now"). No second persistent Ember region may compete with it. Ember is allowed in three narrow, non-competing roles: an inline **error string** (text only, never a filled or bordered alert box, the day/week reschedule-failure line is quiet Ember text for this reason), a **destructive hover** on a delete affordance (transient, pointer-only), and the **budget overrun** tail on the settings surface (legitimate because the now-line never appears there, so the rule still holds per screen). The forbidden move is a resting, boxed, or decorative Ember that reads as a second "now."
 
 **The Warm-Neutral Rule.** Every neutral is tinted toward warm (chroma ~0.005). `#000` and `#fff` are forbidden. Slate, cool grey, and "Tailwind zinc" are forbidden. The palette's temperature is the brand.
 
@@ -261,13 +281,16 @@ The block is the system's single most important surface. Every other component e
 - **Title input:** 13px weight 600, tracking -0.005em. Pixel-parity with the block title so creation feels continuous with the block that will appear.
 - **Time inputs:** 58px wide, 11px tabular mono, `ink-muted` at rest, `ink` on focus. Hidden chrome (no border, no background).
 - **Meta row:** 10px tabular mono, `ink-faint`. Carries the duration and any tiny validation hint.
-- **Error state:** the meta row's text shifts to **Ember**. No icon, no border change.
+- **Labels row:** a `#` sigil + mono input on its own row. While focused, a quiet strip of **recent-label pills** (low-opacity Burnt Ochre wash) appears for one-tap insertion. Pills, like every interactive control, carry a 1px Deep Ochre `:focus-visible` ring.
+- **Recurrence row:** five quiet pills (once / daily / weekdays / weekly / every N d), the active one in a low-opacity accent wash. The "every N d" pill wraps an inline numeric input so the interval reads as part of the same affordance, not a separate field; it rings on `:focus-within`. The meta row spells out the cadence ("repeats weekly · 60 occurrences ahead").
+- **Error state:** the meta row's text shifts to **Ember**. No icon, no border change, never a filled alert box (see the One Ember Rule).
 
 ### Date Toolbar
 
-- **Composition:** weekday + date as a flex baseline row. Date is set in **Display** (30px, weight 600, tight tracking). Day-of-week is set as a tiny 10px Burnt Ochre uppercase label sitting baseline-aligned next to the date numeral.
-- **Subtitle:** "Tuesday · 28 May 2026 · UTC" in 14px Walnut Muted, with the year and tz tag in `ink-faint`.
-- **Controls:** day/week toggle on the left of the right cluster, then prev / today / next as three small **glyph-btn**s separated by a 1px x 16px hairline divider.
+- **Composition:** the masthead is set in **Display** (30px, weight 600, tight tracking) and re-phrases per view: day = weekday long (with a tiny Burnt Ochre `· today` tag when current); month = month name (`· this month`); 5-day/week = the month or month-range. Only one Display element per page (the Single-Display Rule holds).
+- **Subtitle:** 14px Walnut Muted with the year and tz tag in `ink-faint`. Day view reads "28 May · 2026 · UTC"; multi-day reads a range with a mono `→` ("Mon 26 → Fri 30 · 2026"); the tz tag is always the trailing uppercase mono chip.
+- **View toggle:** a labeled `<nav aria-label="View">` of four text **glyph-btn**s, Day / 5d / Week / Month; the active one is a `<span aria-current="true">` (not a link), the `5d` numeral rides `.num`.
+- **Navigation:** a 1px × 16px hairline divider, then prev / **Today** / next as **glyph-btn**s in their own labeled `<nav>`. Today carries `aria-current` when the view is already on today. Stepping is view-aware (±1 day, ±5 days, ±1 week, or ±1 month).
 
 ### Glyph Button
 
@@ -292,20 +315,55 @@ The block is the system's single most important surface. Every other component e
 
 ### Now-Line
 
-- **Composition:** 1px **Ember** horizontal line spanning the column body, a 6px **Ember** filled dot in the hour gutter, and a 10px tabular-mono **Ember** timestamp label aligned to the gutter.
-- **Behavior:** updates on requestAnimationFrame-tick during the active minute. Never animates position with a transition; the position is the time.
+- **Composition:** 1px **Ember** horizontal line spanning the column body and a small **Ember** `now · HH:MM` label (uppercase mono tag + tabular-mono time) pinned to the right edge of that line, on a faint warm-surface backing so the line doesn't bleed through the text. In week view the line is scoped to today's column only, so it never implies "now is everywhere at once."
+- **Behavior:** the clock re-arms to each minute boundary (so the displayed `HH:MM` flips exactly on the minute rather than drifting on a fixed interval) and re-syncs the instant the tab returns from the background. Never animates position with a transition; the position is the time. The active block (the one the current minute sits inside) carries the parallel Ember tells: a faint Ember inset ring, a `now` corner glyph, and the "X left" tail.
+
+### Checkpoint (scalar day-divider)
+
+A user-placed horizontal marker on the grid: a named moment ("standup", "school run") rather than a duration. It deliberately sits in a **third channel**, neither Ember (now) nor graphite-dashed (free), so the three meanings never collide.
+
+- **Composition:** a 1px **solid** hairline in **Hairline Strong** across the column body, a 10px horizontal tick in the hour gutter at the line's center, and a right-anchored label tag whose `surface` background masks the line behind the text (the architectural-drawing convention: dimension lines get interrupted by their label). The tag reads `HH:MM · label` in mono + uppercase Label type. On today, a future checkpoint carries a faint `· in Xh Ym` countdown that vanishes the moment now crosses it.
+- **States:** the line and tag warm from `text-faint` toward `ink` on hover/focus. Past days render display-only (dimmed, not editable).
+- **Editor:** clicking the tag opens an inline single-row editor (label input + mono time input + `↵ add`/`save` hint) that lifts to the same accent Composer ring as the task composer, compressed because a checkpoint has no duration. The remove affordance is a quiet text action: Ember on hover (the editor's destructive-text convention), accent ring on focus. Enter commits, Escape cancels.
+- **Week view:** the tag collapses to just the time (no room for the label); the line spans the column. Created with the `c` key, mirroring `n` for the task composer.
+
+### Recurrence & Series Delete
+
+- **Authoring:** lives entirely in the composer's recurrence row (see Composer). No separate recurrence dialog.
+- **Series-delete confirm:** deleting a recurring block swaps the corner delete-X for an inline confirm strip (`just this · + future ✕`) on the same paper-on-paper surface as the composer (accent ring + warm shadow). The "+ future" choice is the only Ember-on-hover in the strip. One-shot (non-recurring) blocks still delete immediately, no confirm. There is no modal.
 
 ### Status Line
 
 - **Position:** below the day grid. A single typographic row separated from the grid by a 1px **Hairline** top border.
-- **Content:** "next free 14:00 · 90m ↵" on the left, secondary affordances on the right, both at 12px `ink-faint`. The free-mark dash before "next free" is a 12px tiled dashed segment in Graphite Mist at 70% opacity.
+- **Content:** the label-filter pill on the far left, then "next free 14:00 · 90m ↵" (in week view, prefixed with the day: "Tue 27 · 14:00 · 90m"), both at 12px `ink-faint`. The free-mark dash before "next free" is a 12px tiled dashed segment in Graphite Mist at 70% opacity. The right side carries quiet `kbd` hints (`n task · c mark`) and the block count, or the word `composing` while a composer is open.
 
-### Week View
+### Label Filter
 
-- **Composition:** seven day-columns sharing one hour gutter. Sticky weekday strip at the top of the scroll area.
-- **Today column:** receives a 6% Deep Ochre tint on the header and 2.5% on the column body. Day-of-week label and date numeral shift to **Burnt Ochre**.
-- **Past column type:** day-of-week and date drop to `ink-faint`. The column body itself does not dim; it remains the same canvas.
-- **Empty-future-day whisper:** a single 10px uppercase tracking-0.18em line saying nothing more than a hyphen, centered. The point is that nothing is the point.
+A status-line affordance for narrowing the grid to one or more labels. It is a **disclosure, not a menu** (a multi-select filter is not a command menu, and there is no arrow-key menu model behind it).
+
+- **Trigger:** a `filter-pill` reading `labels all` / `labels #deep-work` / `labels 3 active`, with `aria-expanded` and a `data-active` accent state. A ghost `✕` clears the filter when one is set.
+- **Popover:** a flat list of **toggle buttons** (real `<button aria-pressed>`, so Tab/Enter/Space work natively), each a graphite mark + mono `#slug` that fills to accent when active. Outside-click and Escape close it. Non-matching blocks on the grid go to a ghost layer (filter-dim), keeping the schedule spatially intact rather than removing rows.
+
+### Day-Stats Line
+
+- **Position:** a single quiet mono row between the date subtitle and the day grid. Not a dashboard tile, not a header zone.
+- **Content:** totals and per-label allocations ("6h 30m booked · 4h open · #deep-work 3h"), amounts in `ink`, labels in `ink-muted`, label slugs tinted Burnt Ochre, separated by faint mid-dots and 1px hairline dividers. Hidden entirely when there's nothing to say.
+
+### Week & 5-Day Views
+
+- **Composition:** seven (or five) day-columns sharing one hour gutter, with a sticky weekday strip at the top of the scroll area. The 5-day view is the same component at a wider column, not a separate layout. The full day grid, drag, resize, composer, and checkpoints all work per-column; a block can be dragged across columns to another day.
+- **Column header:** weekday short + 2-digit date numeral, with a stacked two-line mono stat ("3h booked" over a lighter "5h open"). Past columns drop the open line; an empty future day shows a single centered `·`.
+- **Today column:** a 6% Deep Ochre tint on the header and 2.5% on the body; day-of-week and date shift to **Burnt Ochre**. The now-line is scoped to this column only.
+- **Past column type:** day-of-week and date drop to `ink-faint`; the column body stays the same canvas (no dimming).
+- **Block tags:** because columns are narrow, labels render as up to three uniform graphite **dots** (plus a mono `+N`), not the `#slug` text used in day view. The dots are a density signal, never per-label colors (the Labels-Are-Type-Not-Color Rule still holds).
+
+### Month View
+
+A calm 6×7 grid that trades time precision for shape-at-a-glance. It is a **navigator, never an editor**: each cell is a `<Link>` to that day's view, with honest link semantics (no `role="grid"`, since there's no arrow-key grid model behind it).
+
+- **Cell:** a 2-digit date numeral, a wrapped row of small **ochre dots** (one per block, capped with `+N`), and a 3px booked-share bar pinned to the bottom edge.
+- **Share bar:** the same **track + fill** vocabulary as the budget meter, a Graphite Mist track (open time) with a Deep Ochre fill (booked share). Empty days show a clean graphite hairline; fully-booked days a solid ochre bar.
+- **Cell type:** today tints the cell ~5% accent and turns the numeral Burnt Ochre; other-month days fade to `ink-faint`/0.55; past days drop the numeral and dots to faint. Always 6 rows so paging months never reflows height.
 
 ### Settings Surface (labels & budgets)
 
@@ -326,6 +384,15 @@ The answer to "am I over?" without a single ring, tile, or streak. Built on the 
 - **Range:** a unit selector (Day / Week / Month / Quarter chips) plus prev / now / next glyph-btns re-bases every meter; budgets pro-rate by days across units, and read exactly when the range unit matches the budget's base period.
 - **Empty:** when no label carries a budget, a single quiet line, `Set a budget on a label to track it here.` No placeholder meters.
 
+### Login Scene (the gate)
+
+The single-password gate, composed as a scene rather than a form on a blank page. It earns its place by making the wait meaningful instead of dead.
+
+- **Backdrop:** a full-bleed, non-interactive **ghost of the day grid** sits behind the field at ~16% opacity under a soft radial mask, hour rules, a few evocative amber blocks (mono time ranges only, never invented task titles, since this is pre-auth), and a **live now-line ticking in real wall-clock time**. You are looking at the day you're locked out of, and time is visibly moving without you.
+- **Foreground:** a narrow centered column, the **Kairos** wordmark in Display + a `private day` uppercase Label sublabel, above a single password field styled as a composer-quiet input with a trailing mono affordance glyph (`↵` → `…` while checking → `✓` on success).
+- **Meta line:** one mono status string carrying every state (`enter to unlock`, `checking…`, `wrong password · 2 tries left`, `locked · 4m left`, `opening your day…`), Ember only when it's an error/lockout alert (text, no box).
+- **Reveal:** on unlock the backdrop rises to ~90% and the foreground lifts and dissolves over ~620ms on `ease-snap`, handing off to the real schedule as the light finishes coming up. `prefers-reduced-motion` skips straight to the schedule.
+
 ## 6. Do's and Don'ts
 
 ### Do:
@@ -340,6 +407,8 @@ The answer to "am I over?" without a single ring, tile, or streak. Built on the 
 - **Do** keep the corner cluster (tz chip + theme glyph) fixed at top-right. The app has no header bar; the corner glyph IS the chrome.
 - **Do** honor `prefers-reduced-motion`. The reduce-motion query strips all transition durations to 1ms.
 - **Do** cap body line length at 65-75ch in any long-form copy region.
+- **Do** give every interactive control a visible focus state (the WCAG floor). Chrome buttons use the offset accent ring (`focus-visible:ring-1 ring-accent/50 ring-offset-2`); inline editor pills and chips use a flush `box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55)`. A keyboard-reachable control with no `:focus-visible` is a bug.
+- **Do** keep ARIA honest: a role is a promise of behavior. The label filter is a disclosure of `aria-pressed` toggle buttons, not a `role="menu"`; the month grid is a set of day-links, not a `role="grid"`.
 
 ### Don't:
 
@@ -360,3 +429,6 @@ The answer to "am I over?" without a single ring, tile, or streak. Built on the 
 - **Don't** add a "productivity dashboard" header zone above the grid. The grid is the page. Anything that competes with it for vertical attention is wrong.
 - **Don't** use em dashes in any user-visible copy. Use commas, colons, semicolons, periods, or parentheses. (`--` is also out.)
 - **Don't** use the **flat, equal-weight hierarchy** of everything competing for attention at the same scale. The day grid is the hero; everything else is staff.
+- **Don't** wrap a transient error in a filled or bordered alert box. Errors are a quiet Ember **text** line (no fill, no border, no icon), per the One Ember Rule. A boxed red alert is the SaaS reflex this system rejects.
+- **Don't** declare a widget role you don't implement: no `role="grid"` without arrow-key cell navigation, no `role="menu"` / `menuitemcheckbox` on a multi-select filter. Over-promised ARIA is worse than none.
+- **Don't** color-code the week-view block tags. They are uniform graphite density dots (plus `+N`), never a per-label palette.

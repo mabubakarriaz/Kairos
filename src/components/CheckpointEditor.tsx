@@ -162,8 +162,7 @@ export function CheckpointEditor(props: Props) {
         <button
           type="button"
           onClick={() => void remove()}
-          className="checkpoint-editor-meta"
-          style={{ cursor: "pointer", padding: 0 }}
+          className="checkpoint-editor-meta checkpoint-editor-remove"
           aria-label="Remove checkpoint from this date forward"
           disabled={pending}
         >

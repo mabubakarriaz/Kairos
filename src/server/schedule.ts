@@ -11,6 +11,7 @@ type TaskJoin = {
 
 type CalendarJoin = {
   label: string | null;
+  show_on_grid: boolean | null;
 };
 
 interface BlockRow {
@@ -47,13 +48,20 @@ function tagsOf(row: BlockRow): string[] {
   return taskOf(row)?.tags ?? [];
 }
 
-/** Blocks overlapping the half-open window [startUtc, endUtc), ordered by start. */
+/**
+ * Blocks overlapping the half-open window [startUtc, endUtc), ordered by start.
+ *
+ * Gcal blocks belonging to a calendar with `show_on_grid = false` are dropped
+ * here so the grid and its day-stats both exclude them. They remain in the DB
+ * and still count as busy for `free_slots()` (a separate SQL path), so hiding a
+ * calendar declutters the view without freeing the time it claims.
+ */
 export async function getBlocksInRange(startUtc: string, endUtc: string): Promise<ScheduledBlock[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("scheduled_blocks")
     .select(
-      "id, task_id, source, start_utc, end_utc, title, calendar_id, tasks(title, tags, series_id, recurrence_kind), calendars(label)",
+      "id, task_id, source, start_utc, end_utc, title, calendar_id, tasks(title, tags, series_id, recurrence_kind), calendars(label, show_on_grid)",
     )
     .lt("start_utc", endUtc)
     .gt("end_utc", startUtc)
@@ -61,21 +69,23 @@ export async function getBlocksInRange(startUtc: string, endUtc: string): Promis
 
   if (error) throw new Error(`Failed to load schedule: ${error.message}`);
 
-  return (data as BlockRow[] | null ?? []).map((row) => {
-    const t = taskOf(row);
-    return {
-      id: row.id,
-      taskId: row.task_id,
-      source: row.source,
-      startUtc: row.start_utc,
-      endUtc: row.end_utc,
-      title: titleOf(row),
-      tags: tagsOf(row),
-      seriesId: row.source === "kairos" ? t?.series_id ?? null : null,
-      recurrenceKind: row.source === "kairos" ? t?.recurrence_kind ?? null : null,
-      calendarId: row.calendar_id,
-    };
-  });
+  return (data as BlockRow[] | null ?? [])
+    .filter((row) => row.source !== "gcal" || calendarOf(row)?.show_on_grid !== false)
+    .map((row) => {
+      const t = taskOf(row);
+      return {
+        id: row.id,
+        taskId: row.task_id,
+        source: row.source,
+        startUtc: row.start_utc,
+        endUtc: row.end_utc,
+        title: titleOf(row),
+        tags: tagsOf(row),
+        seriesId: row.source === "kairos" ? t?.series_id ?? null : null,
+        recurrenceKind: row.source === "kairos" ? t?.recurrence_kind ?? null : null,
+        calendarId: row.calendar_id,
+      };
+    });
 }
 
 type Result = { ok: true } | { ok: false; error: string };

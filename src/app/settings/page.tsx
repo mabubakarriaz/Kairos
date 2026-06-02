@@ -2,6 +2,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { LabelManager } from "@/components/LabelManager";
 import { CalendarManager } from "@/components/CalendarManager";
+import { WeekStartToggle } from "@/components/WeekStartToggle";
+import { AppearanceControl } from "@/components/AppearanceControl";
 import {
   getLabelUsage,
   listLabels,
@@ -22,15 +24,17 @@ import {
   daysBetweenUtc,
   dayWindow,
   fmtDuration,
-  mondayOf,
   monthStart,
   normalizeDate,
   quarterStart,
   todayInTz,
   weekDates,
+  weekStartOf,
   weekWindow,
+  type WeekStart,
 } from "@/lib/time";
 import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone, zonedDayStartUtc } from "@/lib/timezone";
+import { WEEK_START_COOKIE, parseWeekStart } from "@/lib/prefs";
 import type { BudgetPeriod, Calendar, Label } from "@/lib/types";
 
 // Reads ?range / ?date + cookie + live DB. Never prerendered.
@@ -57,6 +61,11 @@ async function resolveTz(): Promise<string> {
   return decoded && isValidTimeZone(decoded) ? decoded : DEFAULT_TZ;
 }
 
+async function resolveWeekStart(): Promise<WeekStart> {
+  const jar = await cookies();
+  return parseWeekStart(jar.get(WEEK_START_COOKIE)?.value);
+}
+
 const weekdayShortFmt = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" });
 const dayMonthFmt = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
 const monthLongFmt = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" });
@@ -67,15 +76,15 @@ function utc(date: string): Date {
 }
 
 /** The half-open UTC window + a human label for one calendar range of `unit`. */
-function rangeWindow(unit: BudgetPeriod, date: string, tz: string) {
+function rangeWindow(unit: BudgetPeriod, date: string, tz: string, weekStart: WeekStart) {
   if (unit === "day") {
     const { startUtc, endUtc } = dayWindow(date, tz);
     const d = utc(date);
     return { startUtc, endUtc, label: `${weekdayShortFmt.format(d)} · ${dayMonthFmt.format(d)}` };
   }
   if (unit === "week") {
-    const { startUtc, endUtc } = weekWindow(date, tz);
-    const dates = weekDates(date);
+    const { startUtc, endUtc } = weekWindow(date, tz, weekStart);
+    const dates = weekDates(date, weekStart);
     const first = utc(dates[0]);
     const last = utc(dates[dates.length - 1]);
     return { startUtc, endUtc, label: `${dayMonthFmt.format(first)} → ${dayMonthFmt.format(last)}` };
@@ -96,9 +105,9 @@ function rangeWindow(unit: BudgetPeriod, date: string, tz: string) {
   return { startUtc, endUtc, label: `Q${q} ${yearFmt.format(d)}` };
 }
 
-function shiftAnchor(unit: BudgetPeriod, date: string, dir: -1 | 1): string {
+function shiftAnchor(unit: BudgetPeriod, date: string, dir: -1 | 1, weekStart: WeekStart): string {
   if (unit === "day") return addDays(date, dir);
-  if (unit === "week") return addDays(mondayOf(date), dir * 7);
+  if (unit === "week") return addDays(weekStartOf(date, weekStart), dir * 7);
   if (unit === "month") return addMonths(monthStart(date), dir);
   return addQuarters(quarterStart(date), dir);
 }
@@ -118,11 +127,12 @@ export default async function SettingsPage({
 }) {
   const { range: rangeParam, date: dateParam } = await searchParams;
   const tz = await resolveTz();
+  const weekStart = await resolveWeekStart();
   const range = parseRange(rangeParam);
   const today = todayInTz(tz);
   const date = normalizeDate(dateParam, tz);
 
-  const { startUtc, endUtc, label: rangeLabel } = rangeWindow(range, date, tz);
+  const { startUtc, endUtc, label: rangeLabel } = rangeWindow(range, date, tz, weekStart);
   const rangeDays = daysBetweenUtc(startUtc, endUtc);
 
   // Refresh external events if any calendar has gone stale; the listing below
@@ -193,9 +203,21 @@ export default async function SettingsPage({
       <section className="settings-section" aria-labelledby="budgets-heading">
         <div className="settings-section-bar">
           <h2 id="budgets-heading" className="settings-section-head">Budgets</h2>
-          <RangeNav range={range} date={date} today={today} label={rangeLabel} />
+          <RangeNav range={range} date={date} today={today} label={rangeLabel} weekStart={weekStart} />
         </div>
         <BudgetMeters meters={meters} rangeUnit={range} />
+      </section>
+
+      <section className="settings-section" aria-labelledby="defaults-heading">
+        <h2 id="defaults-heading" className="settings-section-head">Defaults</h2>
+        <p className="defaults-intro">
+          Quiet preferences, kept on this browser. Appearance is the same setting
+          as the corner glyph; week start also sets where the month grid begins.
+        </p>
+        <div className="defaults-grid">
+          <WeekStartToggle current={weekStart} />
+          <AppearanceControl />
+        </div>
       </section>
     </div>
   );
@@ -206,11 +228,13 @@ function RangeNav({
   date,
   today,
   label,
+  weekStart,
 }: {
   range: BudgetPeriod;
   date: string;
   today: string;
   label: string;
+  weekStart: WeekStart;
 }) {
   return (
     <div className="range-nav">
@@ -231,7 +255,7 @@ function RangeNav({
       </nav>
       <span className="range-label num" aria-live="polite">{label}</span>
       <nav aria-label="Budget range navigation" className="range-steps">
-        <Link className="glyph-btn" href={buildHref(range, shiftAnchor(range, date, -1), today)} aria-label="Previous range">
+        <Link className="glyph-btn" href={buildHref(range, shiftAnchor(range, date, -1, weekStart), today)} aria-label="Previous range">
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M14 6l-6 6 6 6" />
           </svg>
@@ -244,7 +268,7 @@ function RangeNav({
         >
           Now
         </Link>
-        <Link className="glyph-btn" href={buildHref(range, shiftAnchor(range, date, 1), today)} aria-label="Next range">
+        <Link className="glyph-btn" href={buildHref(range, shiftAnchor(range, date, 1, weekStart), today)} aria-label="Next range">
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M10 6l6 6-6 6" />
           </svg>

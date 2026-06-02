@@ -15,15 +15,17 @@ import {
   fiveDayDates,
   fiveDayWindow,
   fmtDuration,
-  mondayOf,
   monthGridDates,
   monthGridWindow,
   normalizeDate,
   todayInTz,
   weekDates,
+  weekStartOf,
   weekWindow,
+  type WeekStart,
 } from "@/lib/time";
 import { parseLabelsParam } from "@/lib/labels";
+import { WEEK_START_COOKIE, parseWeekStart } from "@/lib/prefs";
 import {
   DEFAULT_TZ,
   TZ_COOKIE,
@@ -53,6 +55,11 @@ async function resolveTz(): Promise<string> {
   return decoded && isValidTimeZone(decoded) ? decoded : DEFAULT_TZ;
 }
 
+async function resolveWeekStart(): Promise<WeekStart> {
+  const jar = await cookies();
+  return parseWeekStart(jar.get(WEEK_START_COOKIE)?.value);
+}
+
 function safeDecode(raw: string): string {
   try {
     return decodeURIComponent(raw);
@@ -61,7 +68,7 @@ function safeDecode(raw: string): string {
   }
 }
 
-function rangeContainsToday(view: View, date: string, today: string): boolean {
+function rangeContainsToday(view: View, date: string, today: string, weekStart: WeekStart): boolean {
   if (view === "day") return date === today;
   if (view === "5d") return today >= date && today < addDays(date, 5);
   if (view === "month") {
@@ -69,7 +76,7 @@ function rangeContainsToday(view: View, date: string, today: string): boolean {
     const t = new Date(`${today}T00:00:00.000Z`);
     return d.getUTCFullYear() === t.getUTCFullYear() && d.getUTCMonth() === t.getUTCMonth();
   }
-  return mondayOf(date) === mondayOf(today);
+  return weekStartOf(date, weekStart) === weekStartOf(today, weekStart);
 }
 
 export default async function Page({
@@ -82,9 +89,10 @@ export default async function Page({
   const date = normalizeDate(dateParam, tz);
   const view = parseView(viewParam);
   const today = todayInTz(tz);
+  const weekStart = await resolveWeekStart();
   const filterLabels = parseLabelsParam(labelsParam);
   const labelsQuery = filterLabels.join(",");
-  const isToday = rangeContainsToday(view, date, today);
+  const isToday = rangeContainsToday(view, date, today, weekStart);
 
   // Pull fresh Google events before the view fetches blocks, but only when a
   // calendar has gone stale — a normal load does no network and just reads the DB.
@@ -105,12 +113,19 @@ export default async function Page({
       {view === "day" ? (
         <DayView date={date} tz={tz} filterLabels={filterLabels} labelsQuery={labelsQuery} />
       ) : view === "month" ? (
-        <MonthView date={date} tz={tz} filterLabels={filterLabels} labelsQuery={labelsQuery} />
+        <MonthView
+          date={date}
+          tz={tz}
+          weekStart={weekStart}
+          filterLabels={filterLabels}
+          labelsQuery={labelsQuery}
+        />
       ) : (
         <MultiDayView
           date={date}
           tz={tz}
           view={view}
+          weekStart={weekStart}
           filterLabels={filterLabels}
           labelsQuery={labelsQuery}
         />
@@ -241,18 +256,21 @@ async function MultiDayView({
   date,
   tz,
   view,
+  weekStart,
   filterLabels,
   labelsQuery,
 }: {
   date: string;
   tz: string;
   view: "5d" | "week";
+  weekStart: WeekStart;
   filterLabels: string[];
   labelsQuery: string;
 }) {
   const today = todayInTz(tz);
-  const dates = view === "5d" ? fiveDayDates(date) : weekDates(date);
-  const { startUtc, endUtc } = view === "5d" ? fiveDayWindow(date, tz) : weekWindow(date, tz);
+  const dates = view === "5d" ? fiveDayDates(date) : weekDates(date, weekStart);
+  const { startUtc, endUtc } =
+    view === "5d" ? fiveDayWindow(date, tz) : weekWindow(date, tz, weekStart);
 
   const dayWindows = dates.map((d) => {
     const start = zonedDayStartUtc(d, tz);
@@ -346,17 +364,19 @@ function WeekStatsLine({ days, today }: { days: WeekDay[]; today: string }) {
 async function MonthView({
   date,
   tz,
+  weekStart,
   filterLabels,
   labelsQuery,
 }: {
   date: string;
   tz: string;
+  weekStart: WeekStart;
   filterLabels: string[];
   labelsQuery: string;
 }) {
   const today = todayInTz(tz);
-  const gridDates = monthGridDates(date);
-  const { startUtc, endUtc } = monthGridWindow(date, tz);
+  const gridDates = monthGridDates(date, weekStart);
+  const { startUtc, endUtc } = monthGridWindow(date, tz, weekStart);
 
   const dayWindows = gridDates.map((d) => {
     const start = zonedDayStartUtc(d, tz);
@@ -396,6 +416,7 @@ async function MonthView({
         anchorDate={date}
         today={today}
         tz={tz}
+        weekStart={weekStart}
         labelsQuery={labelsQuery}
         filterLabels={filterLabels}
       />

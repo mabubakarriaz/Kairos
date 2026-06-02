@@ -42,26 +42,39 @@ export const WEEK_DAYS = 7;
 /** Number of days rendered in the rolling 5-day view. */
 export const FIVE_DAYS = 5;
 
-/** YYYY-MM-DD of the Monday in the calendar week containing `date`. */
-export function mondayOf(date: string): string {
+/** Which day the user's week (and month grid) begins on. Default is Monday. */
+export type WeekStart = "mon" | "sun";
+
+/** YYYY-MM-DD of the first day of the week containing `date`, for `weekStart`. */
+export function weekStartOf(date: string, weekStart: WeekStart = "mon"): string {
   const d = new Date(`${date}T00:00:00.000Z`);
   const dow = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const back = (dow + 6) % 7; // Sun→6, Mon→0, Tue→1, ..., Sat→5
+  // Days to step back to reach the anchor day-of-week.
+  const back = weekStart === "sun" ? dow : (dow + 6) % 7;
   return addDays(date, -back);
 }
 
-/** Half-open UTC window covering the Monday-anchored week containing `date`, in zone. */
-export function weekWindow(date: string, timeZone: string): { startUtc: string; endUtc: string } {
-  const monday = mondayOf(date);
-  const startUtc = zonedDayStartUtc(monday, timeZone);
-  const endUtc = zonedDayStartUtc(addDays(monday, WEEK_DAYS), timeZone);
+/** YYYY-MM-DD of the Monday in the calendar week containing `date`. */
+export function mondayOf(date: string): string {
+  return weekStartOf(date, "mon");
+}
+
+/** Half-open UTC window covering the week containing `date`, anchored to `weekStart`, in zone. */
+export function weekWindow(
+  date: string,
+  timeZone: string,
+  weekStart: WeekStart = "mon",
+): { startUtc: string; endUtc: string } {
+  const first = weekStartOf(date, weekStart);
+  const startUtc = zonedDayStartUtc(first, timeZone);
+  const endUtc = zonedDayStartUtc(addDays(first, WEEK_DAYS), timeZone);
   return { startUtc, endUtc };
 }
 
-/** The seven YYYY-MM-DDs rendered in week view (Mon..Sun) for the week containing `date`. */
-export function weekDates(date: string): string[] {
-  const monday = mondayOf(date);
-  return Array.from({ length: WEEK_DAYS }, (_, i) => addDays(monday, i));
+/** The seven YYYY-MM-DDs rendered in week view for the week containing `date`. */
+export function weekDates(date: string, weekStart: WeekStart = "mon"): string[] {
+  const first = weekStartOf(date, weekStart);
+  return Array.from({ length: WEEK_DAYS }, (_, i) => addDays(first, i));
 }
 
 /** The five YYYY-MM-DDs starting at `date` (a rolling 5-day window, not Mon-anchored). */
@@ -116,16 +129,21 @@ export function daysBetweenUtc(startUtc: string, endUtc: string): number {
   return Math.round((new Date(endUtc).getTime() - new Date(startUtc).getTime()) / 86_400_000);
 }
 
-/** The 42 YYYY-MM-DD dates in the month grid: Monday before month-start through 6 weeks. */
-export function monthGridDates(date: string): string[] {
+/** The 42 YYYY-MM-DD dates in the month grid: the week-start day before
+ *  month-start through 6 weeks. Anchored to `weekStart`. */
+export function monthGridDates(date: string, weekStart: WeekStart = "mon"): string[] {
   const first = monthStart(date);
-  const gridStart = mondayOf(first);
+  const gridStart = weekStartOf(first, weekStart);
   return Array.from({ length: MONTH_GRID_DAYS }, (_, i) => addDays(gridStart, i));
 }
 
 /** Half-open UTC window covering the full month grid (6 weeks), in zone. */
-export function monthGridWindow(date: string, timeZone: string): { startUtc: string; endUtc: string } {
-  const dates = monthGridDates(date);
+export function monthGridWindow(
+  date: string,
+  timeZone: string,
+  weekStart: WeekStart = "mon",
+): { startUtc: string; endUtc: string } {
+  const dates = monthGridDates(date, weekStart);
   const startUtc = zonedDayStartUtc(dates[0], timeZone);
   const endUtc = zonedDayStartUtc(addDays(dates[dates.length - 1], 1), timeZone);
   return { startUtc, endUtc };

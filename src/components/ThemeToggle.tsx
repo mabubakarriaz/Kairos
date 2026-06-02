@@ -1,64 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type Pref = "light" | "dark" | "system";
-
-function readPref(): Pref {
-  if (typeof window === "undefined") return "system";
-  const raw = window.document.documentElement.dataset.themePref;
-  return raw === "light" || raw === "dark" ? raw : "system";
-}
-
-function applyPref(pref: Pref) {
-  const root = document.documentElement;
-  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const dark = pref === "dark" || (pref === "system" && systemDark);
-  root.classList.toggle("dark", dark);
-  root.dataset.themePref = pref;
-  try {
-    if (pref === "system") localStorage.removeItem("kairos-theme");
-    else localStorage.setItem("kairos-theme", pref);
-  } catch {
-    // private mode, etc.
-  }
-}
-
-const NEXT: Record<Pref, Pref> = { light: "dark", dark: "system", system: "light" };
-const LABEL: Record<Pref, string> = { light: "Light", dark: "Dark", system: "System" };
+import {
+  NEXT_THEME,
+  THEME_EVENT,
+  THEME_LABEL,
+  applyThemePref,
+  readThemePref,
+  type ThemePref,
+} from "@/lib/theme";
 
 export function ThemeToggle() {
-  const [pref, setPref] = useState<Pref>("system");
+  const [pref, setPref] = useState<ThemePref>("system");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setPref(readPref());
+    setPref(readThemePref());
     setMounted(true);
 
     // If preference is "system", follow OS changes live.
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => {
-      if (readPref() === "system") applyPref("system");
+      if (readThemePref() === "system") applyThemePref("system");
     };
     mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+
+    // Stay in sync when the settings Appearance control changes the pref.
+    const onThemeChange = (e: Event) => setPref((e as CustomEvent<ThemePref>).detail);
+    window.addEventListener(THEME_EVENT, onThemeChange);
+
+    return () => {
+      mq.removeEventListener("change", handler);
+      window.removeEventListener(THEME_EVENT, onThemeChange);
+    };
   }, []);
 
   function cycle() {
-    const next = NEXT[pref];
+    const next = NEXT_THEME[pref];
     setPref(next);
-    applyPref(next);
+    applyThemePref(next);
   }
 
   // SSR-stable icon (system) until mounted, then real state.
-  const shown: Pref = mounted ? pref : "system";
+  const shown: ThemePref = mounted ? pref : "system";
 
   return (
     <button
       type="button"
       onClick={cycle}
-      aria-label={`Theme: ${LABEL[shown]} (click to change)`}
-      title={`Theme · ${LABEL[shown]}`}
+      aria-label={`Theme: ${THEME_LABEL[shown]} (click to change)`}
+      title={`Theme · ${THEME_LABEL[shown]}`}
       className="glyph-btn"
     >
       {shown === "light" && (

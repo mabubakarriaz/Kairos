@@ -36,6 +36,9 @@ export interface Calendar {
   icsUrl: string;
   label: string;
   enabled: boolean;
+  /** When false, the calendar stays synced (and busy for free-slots) but its
+   *  events are not drawn on the grid. A view declutter, lighter than `enabled`. */
+  showOnGrid: boolean;
   position: number;
   lastSyncedAt: string | null;
   lastSyncError: string | null;

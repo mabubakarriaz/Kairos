@@ -1,4 +1,4 @@
-import { computeDayStats, DAY_MINUTES, fmtDuration } from "@/lib/time";
+import { computeDayStats, DAY_MINUTES, fmtDuration, type WeekStart } from "@/lib/time";
 import { matchesLabelFilter } from "@/lib/labels";
 import type { ScheduledBlock } from "@/lib/types";
 import { MonthCell, type MonthCellView, type MonthEvent } from "./MonthCell";
@@ -27,7 +27,8 @@ export interface MonthCellData {
 const MAX_DOTS = 10;
 /** The popover lists every block but caps the visible rows, with a "+N more". */
 const MAX_POPOVER = 8;
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_LABELS_MON = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_LABELS_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface Props {
   cells: MonthCellData[];
@@ -36,6 +37,8 @@ interface Props {
   /** YYYY-MM-DD for "today" in the active zone. */
   today: string;
   tz: string;
+  /** Which day the grid's columns start on — must match how `cells` were ordered. */
+  weekStart: WeekStart;
   labelsQuery: string;
   filterLabels: string[];
 }
@@ -68,9 +71,11 @@ export function MonthGrid({
   anchorDate,
   today,
   tz,
+  weekStart,
   labelsQuery,
   filterLabels,
 }: Props) {
+  const weekdayLabels = weekStart === "sun" ? WEEKDAY_LABELS_SUN : WEEKDAY_LABELS_MON;
   const anchor = new Date(`${anchorDate}T00:00:00.000Z`);
   const anchorMonth = anchor.getUTCMonth();
   const anchorYear = anchor.getUTCFullYear();
@@ -139,7 +144,7 @@ export function MonthGrid({
   return (
     <div className="month-grid">
       <div className="month-weekdays" aria-hidden="true">
-        {WEEKDAY_LABELS.map((label) => (
+        {weekdayLabels.map((label) => (
           <span key={label} className="month-weekday">
             {label}
           </span>

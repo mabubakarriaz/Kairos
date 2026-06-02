@@ -149,6 +149,16 @@ components:
     backgroundColor: "transparent"
     textColor: "{colors.ink}"
     typography: "{typography.title}"
+  cal-eye:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-faint}"
+    rounded: "{rounded.sm}"
+    height: "24px"
+    width: "24px"
+  defaults-seg:
+    backgroundColor: "transparent"
+    rounded: "{rounded.sm}"
+    padding: "2px"
 ---
 
 # Design System: Kairos
@@ -393,14 +403,15 @@ A calm 6×7 grid that trades time precision for shape-at-a-glance. It is a **nav
 - **Share bar:** the same **track + fill** vocabulary as the budget meter, a Graphite Mist track (open time) with a Deep Ochre fill (booked share). Empty days show a clean graphite hairline; fully-booked days a solid ochre bar.
 - **Cell type:** today tints the cell ~5% accent and turns the numeral Burnt Ochre; other-month days fade to `ink-faint`/0.55; past days drop the numeral and dots to faint. Always 6 rows so paging months never reflows height.
 
-### Settings Surface (labels & budgets)
+### Settings Surface (calendars, labels, budgets, defaults)
 
 A deliberate second room, not chrome bolted onto the grid. Reached by a **gear glyph-btn** added to the fixed top-right corner cluster (now: tz chip · theme · settings · logout). The route is `/settings`, rendered in the same `mx-auto max-w-3xl` single column as the day view, flat and hairline-separated. No SaaS settings sprawl: no card grid, no sidebar of sections, no nested panels.
 
 - **Header:** a quiet `← back to today` link (10–11px, `ink-faint` → `ink`) above the page title, which is the only **Display** element on the surface (the Single-Display Rule still holds, scoped per page).
-- **Sections** stack vertically, separated by a 1px Hairline top border, each titled with a **Label**-style heading (11px, uppercase, tracking-0.12em, `ink-muted`). Order: **Calendars**, then Labels, then Budgets.
-- **Calendars region:** the Google-sync room. A quiet status bar (`2 synced · 3m ago`) with a **Sync now** button (amber chip; turns Ember when a feed is in error, with a spinning glyph while syncing), above a flat list of attached calendars. Each row is an enable **switch** (graphite track, amber when on), the calendar name + its `#label`, a masked URL (`host/…/basic.ics`, never the full secret), and a status string (`synced 2m ago` / `paused` / a truncated error in Ember). Editing or attaching opens an inline paper-lift form (name + `#label` on one row, the secret iCal URL beneath), never a modal. Same composer vocabulary as the label adder; the secret address is server-only and never rendered in full.
+- **Sections** stack vertically, separated by a 1px Hairline top border, each titled with a **Label**-style heading (11px, uppercase, tracking-0.12em, `ink-muted`). Order: **Calendars**, then Labels, then Budgets, then **Defaults**. The first three are *data the user owns*; Defaults is the one bounded room of app preferences (see the Defaults region and the Quiet-Defaults Rule).
+- **Calendars region:** the Google-sync room. A quiet status bar (`2 synced · 3m ago`) with a **Sync now** button (amber chip; turns Ember when a feed is in error, with a spinning glyph while syncing), above a flat list of attached calendars. Each row is an enable **switch** (graphite track, amber when on), the calendar name + its `#label`, a masked URL (`host/…/basic.ics`, never the full secret), and a status string (`synced 2m ago` / `paused` / `hidden from grid` / a truncated error in Ember). A **grid-visibility eye** (`cal-eye`, a 24px stroke-only glyph beside `edit`, slashed and Burnt-Ochre-tinted when off) hides a calendar's events from the grid *without* unsyncing them: the eye is a lighter sibling of the enable switch (which deletes the synced rows), and a hidden calendar's meetings still count as busy for free-slots and day stats. Hiding declutters the view, it does not free the time (the Borrowed-Time Rule, view-scoped). The eye only appears on enabled rows. Editing or attaching opens an inline paper-lift form (name + `#label` on one row, the secret iCal URL beneath), never a modal. Same composer vocabulary as the label adder; the secret address is server-only and never rendered in full.
 - **Labels region:** a one-line composer (`#` sigil + mono input + `↵ add` hint) that lifts to the Composer ring on focus, above a flat list. Each row is a mono `#slug` tag, a budget cell that reads `40h /wk` (or `set budget`), and a ghost remove X that appears on row hover. Editing a budget swaps the cell in place for an inline editor (mono hours input + four period chips Day/Week/Month/Quarter + `↵ save` / `clear`), never a modal. Free-text tags already on tasks but not yet registered appear under a faint `in use, not yet added` row as one-tap promotion pills.
+- **Defaults region:** the single bounded room of app preferences, kept per-browser. A quiet intro line, then a flat label-led list. Each control is a name on the left and a **`defaults-seg`** on the right: a 1px-hairline-framed group of `range-chip`s (the active one in the accent wash, `aria-current` / `aria-pressed`), the same segmented vocabulary as the budget range selector. Currently two controls: **Week starts** (`Mon` / `Sun`, which also re-anchors the month grid; written to a cookie since the week window resolves on the server) and **Appearance** (`Light` / `Dark` / `System`, the same stored value the corner theme glyph writes, kept in lockstep so the two never disagree). No switches sprawl, no per-preference cards. The bar for adding a third control here is high.
 
 ### Budget Meter (the budgets read)
 
@@ -439,6 +450,8 @@ The single-password gate, composed as a scene rather than a form on a blank page
 - **Do** give every interactive control a visible focus state (the WCAG floor). Chrome buttons use the offset accent ring (`focus-visible:ring-1 ring-accent/50 ring-offset-2`); inline editor pills and chips use a flush `box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55)`. A keyboard-reachable control with no `:focus-visible` is a bug.
 - **Do** keep ARIA honest: a role is a promise of behavior. The label filter is a disclosure of `aria-pressed` toggle buttons, not a `role="menu"`; the month grid is a set of day-links, not a `role="grid"`.
 - **Do** render external Google-calendar events in **Calendar Graphite**, read-only, with a corner calendar mark (the Borrowed-Time Rule). Your authored blocks stay amber; the two materials must never be confused.
+- **Do** keep app preferences in the one bounded **Defaults** section of `/settings`, as a flat label-led list of `defaults-seg` chip groups. **The Quiet-Defaults Rule:** a default earns its place only when it changes the app's resting state (appearance, week start, which calendars show); the corner glyphs stay the in-the-moment overrides, and Appearance there is the *same* stored value as the corner theme glyph, never a second source of truth.
+- **Do** treat "hide calendar from grid" (the `cal-eye`) as a *view* declutter, not a detach: keep hidden calendars synced and still counted as busy for free-slots and day stats. Detaching/pausing (the enable switch) is the only thing that removes a calendar's time.
 
 ### Don't:
 
@@ -453,6 +466,7 @@ The single-password gate, composed as a scene rather than a form on a blank page
 - **Don't** introduce blue, teal, emerald, violet, or any color outside the amber + graphite + red-ochre triad. If a state needs to signify, signify by type weight, position, or hairline, not by adding a new hue.
 - **Don't** wrap surfaces in cards. The canvas is the container. Nested cards are always wrong; flat cards are usually unnecessary.
 - **Don't** add a top app-bar, sidebar, or nav rail. The app's chrome is the fixed top-right corner cluster (tz chip · theme · settings gear · logout) plus a date heading. `/settings` is a separate room reached by the gear, not a panel docked onto the grid.
+- **Don't** grow the **Defaults** section into a SaaS preferences page: no tabs, no sub-pages, no card grid, no per-row toggle wall, no "advanced settings" disclosure. It is a short list of resting-state preferences and stays that way. If a knob can live as an in-the-moment corner control instead, it belongs there, not here.
 - **Don't** animate layout properties (width, height, top, left, margin). Use transform and opacity. Use `ease-snap`. No bounce, no elastic.
 - **Don't** add modal dialogs. The composer is inline; the budget editor is inline; label removal is immediate (an inline-undo affordance is a future craft pass, not a modal warning).
 - **Don't** color-code labels or show budgets as rings, gauges, big-number tiles, or streaks. Labels are type, not color; budgets are hairline meters (graphite track, amber fill, Ember overrun). See the Labels-Are-Type-Not-Color Rule and the Budget Meter spec.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-06-02T00:00:00Z",
+  "generatedAt": "2026-06-02T12:00:00Z",
   "title": "Design System: Kairos",
   "extensions": {
     "colorMeta": {
@@ -238,6 +238,22 @@
       "description": "A status-line disclosure trigger (not a menu). Reads 'labels all' / 'labels #deep-work' / 'labels 3 active'; opens a popover of aria-pressed toggle buttons.",
       "html": "<button class=\"ds-filter-pill\" aria-expanded=\"false\"><span class=\"ds-filter-mark\"></span><span class=\"ds-filter-lead\">labels</span><span class=\"ds-filter-summary\">all</span></button>",
       "css": ".ds-filter-pill { display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; padding: 4px 6px; border: 0; border-radius: 2px; background: transparent; color: #5c5346; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 11px; line-height: 1; cursor: pointer; transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-filter-pill:hover { color: #1f1b14; } .ds-filter-pill:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.5); } .ds-filter-mark { width: 6px; height: 6px; border-radius: 9999px; background-color: rgba(121, 110, 95, 0.4); } .ds-filter-summary { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-variant-numeric: tabular-nums; color: #1f1b14; }"
+    },
+    {
+      "name": "Defaults Segment",
+      "kind": "custom",
+      "refersTo": "defaults-seg",
+      "description": "A segmented selector in the /settings Defaults room: a name on the left, a 1px-hairline-framed group of range-chips on the right. Same chip vocabulary as the budget range selector; the active chip wears the accent wash and carries aria-current/aria-pressed. Used for Week-starts (Mon/Sun) and Appearance (Light/Dark/System).",
+      "html": "<div class=\"ds-defaults-control\"><span class=\"ds-defaults-label\">Appearance</span><div class=\"ds-seg\" role=\"group\" aria-label=\"Appearance\"><button class=\"ds-seg-chip\" type=\"button\" aria-pressed=\"false\">Light</button><button class=\"ds-seg-chip\" type=\"button\" aria-pressed=\"true\" aria-current=\"true\">Dark</button><button class=\"ds-seg-chip\" type=\"button\" aria-pressed=\"false\">System</button></div></div>",
+      "css": ".ds-defaults-control { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; min-width: 280px; } .ds-defaults-label { color: #1f1b14; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; line-height: 1; } .ds-seg { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: 6px; border: 1px solid #e6e1d6; } .ds-seg-chip { display: inline-flex; align-items: center; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: #796e5f; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 11px; font-weight: 500; line-height: 1; cursor: pointer; transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-seg-chip:hover { color: #1f1b14; background-color: rgba(176, 122, 53, 0.06); } .ds-seg-chip[aria-current=\"true\"] { color: #8a5b1e; background-color: rgba(176, 122, 53, 0.16); } .ds-seg-chip:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.55); }"
+    },
+    {
+      "name": "Calendar Visibility Eye",
+      "kind": "button",
+      "refersTo": "cal-eye",
+      "description": "Per-calendar grid-visibility toggle in the /settings Calendars list, beside 'edit'. Open eye = shown; slashed + Burnt-Ochre-tinted = hidden from grid. Lighter than the enable switch: hiding keeps the calendar synced and still counted as busy for free-slots, it only suppresses the drawn blocks.",
+      "html": "<button class=\"ds-cal-eye\" type=\"button\" aria-pressed=\"true\" aria-label=\"Show #tkxel on the grid\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10.6 6.1A9.7 9.7 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.6 3.2M6.3 7.4A16.7 16.7 0 0 0 2 12s3.5 7 10 7a9.5 9.5 0 0 0 4-.9\"></path><path d=\"M10 10a3 3 0 0 0 4 4\"></path><path d=\"M3 3l18 18\"></path></svg></button>",
+      "css": ".ds-cal-eye { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #796e5f; cursor: pointer; transition: color 150ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-cal-eye:hover { color: #1f1b14; background-color: rgba(176, 122, 53, 0.08); } .ds-cal-eye[aria-pressed=\"true\"] { color: #8a5b1e; } .ds-cal-eye:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.55); } .ds-cal-eye svg { width: 14px; height: 14px; }"
     }
   ],
   "narrative": {
@@ -265,7 +281,8 @@
       { "name": "The Single-Display Rule", "body": "Only one element on screen sets in Display size: the date. Headlines do not stack. If a second display-size element appears, demote one.", "section": "typography" },
       { "name": "The Flat-At-Rest Rule", "body": "Blocks, free slots, hour labels, status lines, and toolbar buttons cast no shadow at rest. The grid is a flat ruled page. Adding a resting shadow to the block ('for depth') is forbidden; it would make the block read as a card, which it isn't.", "section": "elevation" },
       { "name": "The Shadow-Means-State Rule", "body": "Every shadow in the system signifies an interactive state (dragging, resizing, editing, composing). A shadow is never decorative. If a surface needs to read as elevated without state, restate it with warmth contrast or a hairline, not with a shadow.", "section": "elevation" },
-      { "name": "The Warm-Shadow Rule", "body": "Shadow ink is --shadow: 24 18 12 (light) or 0 0 0 (dark, where the canvas is already deep), never a cool grey-blue. Cool-blue drop shadow against warm paper is the SaaS-template tell.", "section": "elevation" }
+      { "name": "The Warm-Shadow Rule", "body": "Shadow ink is --shadow: 24 18 12 (light) or 0 0 0 (dark, where the canvas is already deep), never a cool grey-blue. Cool-blue drop shadow against warm paper is the SaaS-template tell.", "section": "elevation" },
+      { "name": "The Quiet-Defaults Rule", "body": "App preferences live in one bounded Defaults section of /settings, a flat label-led list of defaults-seg chip groups, not a SaaS preferences page. A default earns its place only when it changes the app's resting state (appearance, week start, which calendars show on the grid); the corner glyphs stay the in-the-moment overrides, and Appearance there is the same stored value as the corner theme glyph, never a second source of truth. No tabs, no sub-pages, no toggle wall. If a knob can live as a corner control instead, it belongs there.", "section": "components" }
     ],
     "dos": [
       "Do use Deep Ochre (#b07a35) or Burnt Ochre (#8a5b1e) for every chromatic chrome accent. The accent is fixed.",
@@ -279,7 +296,9 @@
       "Do honor prefers-reduced-motion. The reduce-motion query strips all transition durations to 1ms.",
       "Do cap body line length at 65-75ch in any long-form copy region.",
       "Do give every interactive control a visible focus state (the WCAG floor). Chrome buttons use the offset accent ring; inline editor pills and chips use a flush box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55). A keyboard-reachable control with no :focus-visible is a bug.",
-      "Do keep ARIA honest: a role is a promise of behavior. The label filter is a disclosure of aria-pressed toggle buttons, not a role=menu; the month grid is a set of day-links, not a role=grid."
+      "Do keep ARIA honest: a role is a promise of behavior. The label filter is a disclosure of aria-pressed toggle buttons, not a role=menu; the month grid is a set of day-links, not a role=grid.",
+      "Do keep app preferences in the one bounded Defaults section of /settings, as a flat label-led list of defaults-seg chip groups. A default earns its place only when it changes the app's resting state; the corner glyphs stay the in-the-moment overrides, and Appearance there is the same stored value as the corner theme glyph (the Quiet-Defaults Rule).",
+      "Do treat 'hide calendar from grid' (the cal-eye) as a view declutter, not a detach: keep hidden calendars synced and still counted as busy for free-slots and day stats. Pausing (the enable switch) is the only thing that removes a calendar's time."
     ],
     "donts": [
       "Don't reintroduce the generic SaaS / Next.js-template look (soft slate + blue accent + rounded cards). The redesign existed to escape it.",
@@ -293,6 +312,7 @@
       "Don't introduce blue, teal, emerald, violet, or any color outside the amber + graphite + red-ochre triad.",
       "Don't wrap surfaces in cards. The canvas is the container. Nested cards are always wrong.",
       "Don't add a top app-bar, sidebar, or nav rail. The corner glyphs and date heading are the whole shell.",
+      "Don't grow the Defaults section into a SaaS preferences page: no tabs, no sub-pages, no card grid, no per-row toggle wall, no 'advanced settings' disclosure. It is a short list of resting-state preferences and stays that way.",
       "Don't animate layout properties (width, height, top, left, margin). Use transform and opacity.",
       "Don't add modal dialogs. The composer is inline, the budget editor is inline, and deleting a recurring block uses an inline 'just this / + future' confirm strip, never a modal warning.",
       "Don't add a 'productivity dashboard' header zone above the grid. The grid is the page.",

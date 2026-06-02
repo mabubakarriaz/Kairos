@@ -1637,6 +1637,11 @@
   .cal-row[data-disabled] .cal-row-text {
     opacity: 0.55;
   }
+  /* Hidden-from-grid (still synced): a lighter mute than paused — the name
+     recedes but the row stays fully legible and editable. */
+  .cal-row[data-hidden] .cal-row-name {
+    opacity: 0.7;
+  }
   .cal-row-main {
     @apply flex min-w-0 flex-1 items-center gap-3;
   }
@@ -1705,6 +1710,29 @@
   }
   .cal-row-actions {
     @apply inline-flex shrink-0 items-center gap-1;
+  }
+  /* Grid-visibility eye — sits beside `edit`. Quiet at rest like the edit
+     action; when the calendar is hidden the slashed eye stays accent-tinted so
+     the muted "off" state reads without hovering. */
+  .cal-row-eye {
+    @apply inline-flex h-6 w-6 items-center justify-center rounded-sm;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+  }
+  .cal-row-eye:hover {
+    color: rgb(var(--text));
+    background-color: rgb(var(--accent) / 0.08);
+  }
+  .cal-row-eye[aria-pressed="true"] {
+    color: rgb(var(--accent-strong));
+  }
+  .cal-row-eye:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
+  .cal-row-eye:disabled {
+    opacity: 0.5;
+    pointer-events: none;
   }
   .cal-row-edit {
     @apply inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] leading-none;
@@ -2088,6 +2116,30 @@
   }
   .range-steps {
     @apply inline-flex items-center gap-0.5;
+  }
+
+  /* ── Defaults — the one app-behavior room. A quiet intro then a label-led
+     grid of controls, each a name + a `seg` of range-chips. No cards, no
+     switches sprawl; same typographic vocabulary as the rest of /settings. */
+  .defaults-intro {
+    @apply max-w-[60ch] text-[13px] leading-relaxed;
+    color: rgb(var(--text-muted));
+  }
+  .defaults-grid {
+    @apply mt-1 flex flex-col gap-3;
+  }
+  .defaults-control {
+    @apply flex flex-wrap items-center justify-between gap-x-6 gap-y-2;
+  }
+  .defaults-control-label {
+    @apply text-[13px] leading-none;
+    color: rgb(var(--text));
+  }
+  /* A segmented selector of range-chips. A 1px hairline frame groups the chips
+     into one control without boxing each. */
+  .seg {
+    @apply inline-flex items-center gap-0.5 rounded-sm p-0.5;
+    border: 1px solid rgb(var(--border));
   }
 
   /* ── Budget meters — the hairline-meter answer to "am I over?". A graphite

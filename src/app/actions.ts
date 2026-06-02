@@ -24,6 +24,7 @@ import {
   createCalendar,
   deleteCalendar,
   setCalendarEnabled,
+  setCalendarVisibility,
   updateCalendar,
 } from "@/server/calendars";
 import { syncAllCalendars } from "@/server/calendar-sync";
@@ -379,6 +380,18 @@ export async function toggleCalendarAction(id: string, enabled: boolean): Promis
   if (!id) return { ok: false, error: "Missing calendar id." };
 
   const res = await setCalendarEnabled(id, enabled);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Show or hide a calendar's events on the grid (keeps it synced and busy). */
+export async function setCalendarVisibilityAction(id: string, showOnGrid: boolean): Promise<ActionResult> {
+  if (!id) return { ok: false, error: "Missing calendar id." };
+
+  const res = await setCalendarVisibility(id, showOnGrid);
   if (!res.ok) return { ok: false, error: res.error };
 
   revalidatePath("/settings");

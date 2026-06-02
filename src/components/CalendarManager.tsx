@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   addCalendarAction,
   deleteCalendarAction,
+  setCalendarVisibilityAction,
   syncCalendarsAction,
   toggleCalendarAction,
   updateCalendarAction,
@@ -107,6 +108,9 @@ export function CalendarManager({ calendars }: Props) {
                 onToggle={() =>
                   run(`toggle:${cal.id}`, () => toggleCalendarAction(cal.id, !cal.enabled))
                 }
+                onToggleVisibility={() =>
+                  run(`vis:${cal.id}`, () => setCalendarVisibilityAction(cal.id, !cal.showOnGrid))
+                }
                 onRemove={() => run(`remove:${cal.id}`, () => deleteCalendarAction(cal.id))}
               />
             ),
@@ -170,17 +174,20 @@ function CalendarRow({
   pending,
   onEdit,
   onToggle,
+  onToggleVisibility,
   onRemove,
 }: {
   cal: Calendar;
   pending: string | null;
   onEdit: () => void;
   onToggle: () => void;
+  onToggleVisibility: () => void;
   onRemove: () => void;
 }) {
   const rowPending = pending != null && pending.endsWith(`:${cal.id}`);
+  const hidden = cal.enabled && !cal.showOnGrid;
   return (
-    <li className="cal-row" data-disabled={!cal.enabled || undefined}>
+    <li className="cal-row" data-disabled={!cal.enabled || undefined} data-hidden={hidden || undefined}>
       <div className="cal-row-main">
         <button
           type="button"
@@ -206,6 +213,34 @@ function CalendarRow({
         </div>
       </div>
       <div className="cal-row-actions">
+        {cal.enabled && (
+          <button
+            type="button"
+            className="cal-row-eye"
+            onClick={onToggleVisibility}
+            disabled={rowPending}
+            aria-pressed={!cal.showOnGrid}
+            aria-label={
+              cal.showOnGrid
+                ? `Hide #${cal.label} from the grid`
+                : `Show #${cal.label} on the grid`
+            }
+            title={cal.showOnGrid ? "Showing on grid" : "Hidden from grid"}
+          >
+            {cal.showOnGrid ? (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            ) : (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.6 6.1A9.7 9.7 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.6 3.2M6.3 7.4A16.7 16.7 0 0 0 2 12s3.5 7 10 7a9.5 9.5 0 0 0 4-.9" />
+                <path d="M10 10a3 3 0 0 0 4 4" />
+                <path d="M3 3l18 18" />
+              </svg>
+            )}
+          </button>
+        )}
         <button type="button" className="cal-row-edit num" onClick={onEdit} disabled={rowPending}>
           edit
         </button>
@@ -227,6 +262,13 @@ function CalendarRow({
 
 function CalendarStatus({ cal }: { cal: Calendar }) {
   if (!cal.enabled) return <span className="cal-row-status" data-tone="off">paused</span>;
+  if (!cal.showOnGrid) {
+    return (
+      <span className="cal-row-status" data-tone="muted" title="Synced and counted as busy, but not drawn on the grid">
+        hidden from grid
+      </span>
+    );
+  }
   if (cal.lastSyncError) {
     return (
       <span className="cal-row-status" data-tone="error" title={cal.lastSyncError}>

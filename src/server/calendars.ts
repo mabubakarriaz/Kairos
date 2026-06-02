@@ -11,6 +11,7 @@ interface CalendarRow {
   ics_url: string;
   label: string;
   enabled: boolean;
+  show_on_grid: boolean;
   position: number;
   last_synced_at: string | null;
   last_sync_error: string | null;
@@ -23,13 +24,15 @@ function toCalendar(row: CalendarRow): Calendar {
     icsUrl: row.ics_url,
     label: row.label,
     enabled: row.enabled,
+    showOnGrid: row.show_on_grid,
     position: row.position,
     lastSyncedAt: row.last_synced_at,
     lastSyncError: row.last_sync_error,
   };
 }
 
-const SELECT = "id, name, ics_url, label, enabled, position, last_synced_at, last_sync_error";
+const SELECT =
+  "id, name, ics_url, label, enabled, show_on_grid, position, last_synced_at, last_sync_error";
 
 /** Every attached calendar, ordered by position then creation. */
 export async function listCalendars(): Promise<Calendar[]> {
@@ -100,6 +103,16 @@ export async function setCalendarEnabled(id: string, enabled: boolean): Promise<
     // Drop its events from the grid; re-enabling re-syncs them.
     await supabase.from("scheduled_blocks").delete().eq("calendar_id", id).eq("source", "gcal");
   }
+  return { ok: true };
+}
+
+/** Show or hide a calendar's events on the grid. Unlike disabling, the calendar
+ *  stays synced and its meetings still count as busy for free-slots; only the
+ *  rendered blocks are suppressed (the filtering happens in getBlocksInRange). */
+export async function setCalendarVisibility(id: string, showOnGrid: boolean): Promise<Result> {
+  const supabase = getSupabase();
+  const { error } = await supabase.from("calendars").update({ show_on_grid: showOnGrid }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { Inter, JetBrains_Mono } from "next/font/google";
@@ -29,6 +29,21 @@ export const metadata: Metadata = {
   description: "A time-blocked todo app. The right and opportune time to do a task.",
 };
 
+// `viewportFit: "cover"` lets the canvas reach under the notch/home indicator
+// so the safe-area insets (consumed in globals.css) do the spacing. Scaling is
+// left enabled (pinch-zoom is an accessibility floor); the iOS focus-zoom is
+// handled by lifting touch inputs to 16px, not by locking the viewport. The
+// two theme colors paint the mobile browser chrome to match each scene.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf8f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#14110d" },
+  ],
+};
+
 // Runs before paint so the theme is applied without a flash.
 // Three-state: explicit "dark", explicit "light", or system (no key set).
 const themeInit = `(function(){try{var t=localStorage.getItem('kairos-theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');document.documentElement.dataset.themePref=t||'system';}catch(e){}})();`;
@@ -53,7 +68,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
-      <body className="flex h-screen flex-col overflow-hidden antialiased">
+      <body className="flex flex-col overflow-hidden antialiased">
         <div className="corner-controls">
           {authed && <TimezoneToggle currentTz={tz} />}
           <ThemeToggle />
@@ -67,7 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           )}
           {authed && <LogoutButton />}
         </div>
-        <main className="flex min-h-0 flex-1 flex-col px-6 pb-6 pt-10 sm:px-8">{children}</main>
+        <main className="app-main">{children}</main>
         <Analytics />
         <SpeedInsights />
       </body>

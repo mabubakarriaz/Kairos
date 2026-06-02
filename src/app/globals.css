@@ -105,6 +105,14 @@
   body {
     @apply bg-canvas text-ink;
     font-family: var(--font-sans, ui-sans-serif), system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* Lock the app to the *visible* viewport. `dvh` excludes the mobile browser's
+       collapsing address bar, so the bottom status line never hides under it;
+       `vh` is the fallback where `dvh` is unsupported. The app owns the screen
+       (overflow-hidden in layout.tsx), so refuse the rubber-band/pull-to-refresh
+       that would otherwise drag the whole canvas. */
+    height: 100vh;
+    height: 100dvh;
+    overscroll-behavior: none;
   }
 
   /* Every numeral on the page is tabular and mono. Times, durations, hours, dates. */
@@ -1835,5 +1843,110 @@
   }
   .login-meta-alert {
     color: rgb(var(--now));
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Mobile & touch adaptation. The day grid is vertical and already scrolls, so
+     the adaptation here is reach and the platform's sharp edges, not a relayout:
+     clear the floating corner cluster, grow tap targets on coarse pointers, stop
+     the iOS focus-zoom, and honor the notch. Phone is one hand, on the move; the
+     grid stays the hero, the staff just gets out of the thumb's way.
+     ───────────────────────────────────────────────────────────────────────── */
+
+  /* The page shell (was inline on <main>). Mobile reclaims the side gutters and
+     drops the title clear of the floating corner cluster; ≥640px restores the
+     wood-desk composition (wider gutters, tighter top). Safe-area insets keep
+     content off the notch and home indicator. */
+  .app-main {
+    @apply flex min-h-0 flex-1 flex-col;
+    padding-top: 4rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  @media (min-width: 640px) {
+    .app-main {
+      padding-top: 2.5rem;
+      padding-bottom: 1.5rem;
+      padding-left: max(2rem, env(safe-area-inset-left));
+      padding-right: max(2rem, env(safe-area-inset-right));
+    }
+  }
+
+  /* Corner cluster rides the safe-area on notched phones (no-op on a desk). */
+  .corner-controls {
+    top: max(1.25rem, env(safe-area-inset-top));
+    right: max(1.25rem, env(safe-area-inset-right));
+  }
+
+  /* Momentum + scroll-chaining containment on the grid's scroll surfaces. */
+  .scroll-area {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Coarse pointers (touch): grow the chrome atoms to a comfortable reach without
+     disturbing the mouse-driven desktop sizing. Keyed on the input device, not a
+     width breakpoint, so a touch laptop benefits and a narrow desktop window
+     doesn't get fat-finger chrome. */
+  @media (pointer: coarse) {
+    .glyph-btn {
+      height: 2.625rem;
+      min-width: 2.625rem;
+    }
+    .tz-chip {
+      height: 2.625rem;
+    }
+    .filter-pill,
+    .status-line button {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+    /* A finger-findable grab strip at the block's bottom edge (was a 5px hairline
+       sized for a mouse). The capsule mark already shows on (hover: none). */
+    .block-resize {
+      height: 11px;
+    }
+    /* Keyboard affordances are noise on touch: the `n task · c mark` hints and
+       the trailing ↵ glyph assume a physical keyboard. The block count stays. */
+    .status-hints .status-hint,
+    .status-hints .status-line-sep {
+      display: none;
+    }
+    /* iOS zooms the page when a focused field computes under 16px. Hold the
+       precise small-numeral system on the desktop and lift only the touch
+       text-entry to 16px, so tap-to-edit never yanks the viewport. The block
+       title's display↔edit pixel-parity is a desktop concern; on a phone an
+       unzoomed, legible field wins. */
+    .composer-title,
+    .composer-time-input,
+    .composer-labels,
+    .composer-repeat-num,
+    .block-title-input,
+    .block-labels-input,
+    .login-input,
+    .label-add-input,
+    .budget-editor-hours,
+    .checkpoint-editor-label,
+    .checkpoint-editor-time {
+      font-size: 16px;
+    }
+    /* At 16px a full "12:30 pm" no longer fits the mouse-sized 72px time fields,
+       so give them room rather than clip the clock. */
+    .composer-time-input,
+    .checkpoint-editor-time {
+      width: 5.25rem;
+    }
+  }
+
+  /* Month view is a navigator at any size; on a phone the 7 columns get tight,
+     so trade cell padding for legible date numerals and tap area. */
+  @media (max-width: 639px) {
+    .month-weekday {
+      @apply px-1.5;
+    }
+    .month-cell {
+      @apply px-1.5 pt-1.5;
+    }
   }
 }

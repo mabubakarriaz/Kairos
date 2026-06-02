@@ -103,6 +103,10 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Pointer-down origin on a column's empty-grid catcher, tagged with the column
+  // it began in, so a tap creates a block while a touch scroll (vertical) or a
+  // cross-column drag does not.
+  const catcherTap = useRef<{ x: number; y: number; col: number } | null>(null);
 
   useEffect(() => {
     if (todayIdx < 0) {
@@ -218,8 +222,19 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
 
   function onCatcherPointerDown(colIdx: number, e: React.PointerEvent) {
     if (e.button !== 0 || isPastByCol[colIdx]) return;
+    catcherTap.current = { x: e.clientX, y: e.clientY, col: colIdx };
+  }
+
+  // Tap-to-create vs. scroll/drag: spawn only when the pointer stayed put between
+  // down and up, in the same column it started in. Mouse clicks register zero
+  // movement, so desktop click-to-create is unchanged.
+  function onCatcherPointerUp(colIdx: number, e: React.PointerEvent) {
+    const start = catcherTap.current;
+    catcherTap.current = null;
+    if (!start || start.col !== colIdx || isPastByCol[colIdx]) return;
     const col = colRefs.current[colIdx];
     if (!col) return;
+    if (Math.abs(e.clientX - start.x) > 10 || Math.abs(e.clientY - start.y) > 10) return;
     const rect = col.getBoundingClientRect();
     const clickedMin = (e.clientY - rect.top) / PX_PER_MIN;
     spawnComposerAt(colIdx, clickedMin);
@@ -737,6 +752,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                       <div
                         className="grid-catcher"
                         onPointerDown={(e) => onCatcherPointerDown(i, e)}
+                        onPointerUp={(e) => onCatcherPointerUp(i, e)}
                         role="presentation"
                       />
                     )}

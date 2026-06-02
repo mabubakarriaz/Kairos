@@ -92,6 +92,10 @@ export function DayColumn({
   const keyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  // Pointer-down origin on the empty-grid catcher, used to tell a tap (create a
+  // block here) from a scroll/drag (move the day). Without it, on touch every
+  // attempt to scroll by dragging empty space would drop a composer.
+  const catcherTap = useRef<{ x: number; y: number } | null>(null);
 
   // Current-time line. "The position is the time" — so we re-arm to the next
   // minute boundary (rather than a fixed interval) so the displayed HH:MM flips
@@ -201,7 +205,17 @@ export function DayColumn({
 
   function onCatcherPointerDown(e: React.PointerEvent) {
     if (e.button !== 0 || isPast) return;
-    if (!gridRef.current) return;
+    catcherTap.current = { x: e.clientX, y: e.clientY };
+  }
+
+  // Spawn only when the pointer barely moved between down and up: a tap creates,
+  // a drag (touch scroll, or an errant mouse drag) does not. Mouse clicks land
+  // here with zero movement, so desktop click-to-create is unchanged.
+  function onCatcherPointerUp(e: React.PointerEvent) {
+    const start = catcherTap.current;
+    catcherTap.current = null;
+    if (!start || isPast || !gridRef.current) return;
+    if (Math.abs(e.clientX - start.x) > 10 || Math.abs(e.clientY - start.y) > 10) return;
     const rect = gridRef.current.getBoundingClientRect();
     const clickedMin = (e.clientY - rect.top) / PX_PER_MIN;
     spawnComposerAt(clickedMin);
@@ -590,6 +604,7 @@ export function DayColumn({
             <div
               className="grid-catcher"
               onPointerDown={onCatcherPointerDown}
+              onPointerUp={onCatcherPointerUp}
               role="presentation"
             />
           )}

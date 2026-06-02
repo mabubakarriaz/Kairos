@@ -73,7 +73,7 @@ export function DateToolbar({
   const tzShort = zoneFor(tz).short;
 
   return (
-    <header className="mb-6 flex items-end justify-between gap-6">
+    <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
       <div className="min-w-0">
         {view === "day" ? (
           <DayTitle date={date} isToday={isToday} tzShort={tzShort} />
@@ -87,7 +87,7 @@ export function DateToolbar({
         )}
       </div>
 
-      <div className="flex items-center gap-3 pb-1">
+      <div className="flex items-center justify-between gap-3 pb-1 sm:justify-start">
         <nav aria-label="View" className="flex items-center gap-0.5">
           {(Object.keys(VIEW_LABEL) as View[]).map((v) => (
             <ViewToggleLink
@@ -99,7 +99,7 @@ export function DateToolbar({
             />
           ))}
         </nav>
-        <span className="h-4 w-px bg-hairline" aria-hidden="true" />
+        <span className="hidden h-4 w-px bg-hairline sm:block" aria-hidden="true" />
         <nav
           aria-label={view === "day" ? "Day navigation" : `${VIEW_LABEL[view]} navigation`}
           className="flex items-center gap-0.5"
@@ -170,7 +170,7 @@ function DayTitle({ date, isToday, tzShort }: { date: string; isToday: boolean; 
           </span>
         )}
       </h1>
-      <p className="mt-2 flex items-baseline gap-1.5 text-sm text-ink-muted">
+      <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm text-ink-muted">
         <span>{monthDayFmt.format(d)}</span>
         <span className="num text-ink-faint" aria-hidden="true">·</span>
         <span className="num text-ink-faint">{yearFmt.format(d)}</span>
@@ -203,7 +203,7 @@ function MonthTitle({
           </span>
         )}
       </h1>
-      <p className="mt-2 flex items-baseline gap-1.5 text-sm text-ink-muted">
+      <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm text-ink-muted">
         <span className="num">{yearFmt.format(d)}</span>
         <span className="num ml-2 text-[10px] uppercase tracking-[0.18em] text-ink-faint">
           {tzShort}
@@ -231,7 +231,7 @@ function MultiDayTitle({ dates, tzShort }: { dates: string[]; tzShort: string })
       <h1 className="flex items-baseline gap-3 truncate text-3xl font-semibold leading-none tracking-[-0.02em] text-ink">
         {monthH1}
       </h1>
-      <p className="mt-2 flex items-baseline gap-1.5 text-sm text-ink-muted">
+      <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm text-ink-muted">
         <span className="num">{firstLabel}</span>
         <span className="num text-ink-faint" aria-hidden="true">→</span>
         <span className="num">{lastLabel}</span>

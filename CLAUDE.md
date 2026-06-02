@@ -14,8 +14,14 @@ support **simple recurrence** (daily / weekdays / weekly / every-N), the grid ca
 `AUTH_SECRET`); not multi-user accounts.
 
 This repo was rebuilt from a former .NET/Aspire stack into a simpler one — don't
-reintroduce .NET, Docker Compose, observability stacks, an MCP server, or Google
-Calendar sync. They were deliberately removed.
+reintroduce .NET, Docker Compose, observability stacks, or an MCP server. They were
+deliberately removed.
+
+**Google Calendar sync shipped 2026-06-02** as a deliberate opt-in: read-only,
+multi-calendar, via each calendar's secret iCal URL (no OAuth, no Google Cloud
+project). External events overlay the grid as `source='gcal'` blocks. See "Google
+Calendar sync" below and [`docs/GOOGLE_CALENDAR.md`](docs/GOOGLE_CALENDAR.md). It's
+the one previously-dropped feature that came back; the others above stay out.
 
 ## Stack (the whole thing)
 
@@ -43,11 +49,14 @@ src/
   lib/
     supabase.ts        # server-only, lazy service-role client (getSupabase())
     time.ts            # UTC day-window + grid math (PX_PER_MIN, snapMinutes, …)
-    types.ts           # ScheduledBlock, FreeSlot, DaySchedule
+    types.ts           # ScheduledBlock, FreeSlot, DaySchedule, Calendar
+    ics.ts             # ical.js-backed .ics → UTC event instances (RRULE/EXDATE/TZID)
   server/              # server-only data access (DB lives behind these)
-    schedule.ts        # getBlocksInRange, rescheduleBlock, deleteBlock
+    schedule.ts        # getBlocksInRange (joins calendars for gcal), reschedule, delete
     tasks.ts           # createTaskWithBlock (task + block in one step, rolls back)
     freeslots.ts       # getFreeSlots → free_slots() RPC, ranks top-N in TS
+    calendars.ts       # calendars CRUD (listCalendars, create/update/delete, enable)
+    calendar-sync.ts   # fetch + parse + reconcile gcal events; syncCalendarsIfStale
 supabase/
   migrations/          # checked-in schema; idempotent; CI runs `supabase db push`
   seed.sql             # optional demo data
@@ -89,6 +98,32 @@ docs/                  # SUPABASE_SETUP, VERCEL_SETUP, DEPLOYMENT
 - **Validate in the Server Action** before touching the DB (title present, end >
   start, estimate positive). Actions return `{ ok, error? }`; never throw across to
   the client.
+
+## Google Calendar sync
+
+Read-only, multi-calendar, no OAuth. Full setup + the Tkxel/Workspace caveat live in
+[`docs/GOOGLE_CALENDAR.md`](docs/GOOGLE_CALENDAR.md). The contracts that matter here:
+
+- **Secret iCal URL is the integration.** Each `calendars` row is a private `.ics`
+  URL + a label. There is no Google Cloud project, no token. The URL is a secret (like
+  the service-role key): server-only, never rendered in full (the UI masks it), never
+  committed. Workspace admins can disable secret addresses — that's the known failure
+  mode, surfaced as a per-calendar sync error.
+- **Events are persisted, not live.** Sync fetches each feed, expands recurrence with
+  `ical.js` (in `src/lib/ics.ts`), and reconciles into `scheduled_blocks` as
+  `source='gcal'` rows over a `today −7d … +60d` window (delete-then-insert per
+  calendar). `gcal` rows carry `calendar_id` + their own `title`; the label is joined
+  from `calendars` at read time. Don't store the label as tags.
+- **gcal is read-only and overlap-exempt.** The no-overlap EXCLUDE only covers
+  `source='kairos'`, so meetings overlap your blocks freely. `reschedule/edit/delete`
+  reject non-kairos blocks; all UI interaction is gated on `source === 'kairos'`.
+  gcal events *do* count as busy for `free_slots` and booked/open stats.
+- **Sync triggers without a cron.** `syncCalendarsIfStale(tz)` runs at the top of the
+  day-view and settings render, gated on a 10-min freshness check + an in-flight/throttle
+  guard, and never throws into a render. A manual `syncCalendarsAction` ("Sync now")
+  forces it. A normal load does zero network — just a DB read.
+- **Known gap:** label budgets are computed in SQL from task tags, so meeting time does
+  not count against a label's budget meter (it does show in day stats / free-slots).
 
 ## Commands
 

@@ -34,6 +34,12 @@
     --block: 244 226 187;
     --block-strong: 235 209 158;
 
+    /* External (Google) calendar fill — cool graphite wash, deliberately NOT amber.
+       Borrowed time reads as a different material; your own blocks stay warm. */
+    --gcal: 222 227 233;
+    --gcal-strong: 208 214 222;
+    --gcal-ink: 74 85 102;
+
     /* "Free" — cool low-chroma graphite. Refused: emerald. */
     --free: 111 121 137;
     --free-strong: 77 86 100;
@@ -82,6 +88,10 @@
 
     --block: 56 44 27;
     --block-strong: 76 60 36;
+
+    --gcal: 39 45 55;
+    --gcal-strong: 52 60 73;
+    --gcal-ink: 174 186 203;
 
     --free: 138 147 162;
     --free-strong: 175 183 196;
@@ -263,6 +273,37 @@
   }
   .block-pending {
     @apply opacity-60;
+  }
+  /* External Google-calendar block — same footprint and typography as a time-block,
+     but a cool graphite wash instead of amber, no grab cursor, and a calendar mark
+     in the corner. Read-only: no drag handle, no delete, not focusable. */
+  .block-gcal {
+    background-color: rgb(var(--gcal));
+    color: rgb(var(--gcal-ink));
+    cursor: default;
+  }
+  .block-gcal:hover {
+    background-color: rgb(var(--gcal-strong));
+  }
+  .block-gcal .block-time {
+    color: rgb(var(--gcal-ink) / 0.78);
+  }
+  .block-gcal .block-time-sep {
+    color: rgb(var(--gcal-ink) / 0.45);
+  }
+  /* Calendar mark — sits where a kairos block keeps its delete glyph. Quiet,
+     decorative-but-meaningful: it's the one tell that this time isn't yours to move. */
+  .block-gcal-glyph {
+    @apply absolute right-2 top-1.5 inline-flex items-center justify-center;
+    color: rgb(var(--gcal-ink) / 0.5);
+    pointer-events: none;
+  }
+  .block-gcal .block-tags {
+    color: rgb(var(--gcal-ink) / 0.72);
+  }
+  .block-gcal .block-title {
+    /* Leave room for the corner calendar mark so a long title never slides under it. */
+    padding-right: 14px;
   }
   .block-title {
     @apply truncate text-[13px] font-semibold leading-tight;
@@ -1079,6 +1120,13 @@
   .month-cell-dot[data-muted="true"] {
     background-color: rgb(var(--text-faint) / 0.35);
   }
+  /* External calendar dots ride the cool graphite, mirroring .block-gcal. */
+  .month-cell-dot[data-gcal="true"] {
+    background-color: rgb(var(--gcal-ink) / 0.7);
+  }
+  .month-cell-dot[data-gcal="true"][data-muted="true"] {
+    background-color: rgb(var(--gcal-ink) / 0.32);
+  }
   .month-cell-dots-more {
     @apply ml-1 text-[10px] font-medium leading-none;
     color: rgb(var(--text-faint));
@@ -1400,6 +1448,285 @@
   }
   .settings-section-bar {
     @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-2;
+  }
+
+  /* ── Calendar manager ───────────────────────────────────────────────────────
+     Attached Google calendars: a quiet status bar + Sync now, a row per calendar
+     (enable switch · name · label · masked URL · status), an inline attach/edit
+     form. Same paper-and-hairline vocabulary as the label manager; the cool
+     graphite of .block-gcal shows up here only in the status tone, not the chrome. */
+  .cal-manager {
+    @apply flex flex-col gap-1;
+  }
+  .cal-bar {
+    @apply flex items-center justify-between gap-3;
+  }
+  .cal-bar-meta {
+    @apply inline-flex items-center gap-1.5 text-[11px] leading-none;
+    color: rgb(var(--text-muted));
+    letter-spacing: 0.02em;
+  }
+  .cal-bar-sep {
+    color: rgb(var(--text-faint) / 0.6);
+  }
+  .cal-bar-time {
+    color: rgb(var(--text-faint));
+  }
+  .cal-sync-btn {
+    @apply inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-[10px] uppercase leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    letter-spacing: 0.14em;
+    color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent) / 0.12);
+  }
+  .cal-sync-btn:hover {
+    background-color: rgb(var(--accent) / 0.2);
+  }
+  .cal-sync-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
+  .cal-sync-btn:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+  /* Error pending: the button leans on the now-ochre to pull the eye to a bad feed. */
+  .cal-sync-btn[data-attention] {
+    color: rgb(var(--now));
+    background-color: rgb(var(--now) / 0.1);
+  }
+  .cal-sync-btn [data-spin] {
+    transform-origin: center;
+    animation: cal-spin 800ms linear infinite;
+  }
+  @keyframes cal-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .cal-manager-error {
+    @apply mt-1 px-1 text-[11px] leading-tight;
+    color: rgb(var(--now));
+  }
+  .cal-empty {
+    @apply mt-3 max-w-[60ch] text-[13px] leading-relaxed;
+    color: rgb(var(--text-muted));
+  }
+  .cal-list {
+    @apply mt-2 flex list-none flex-col p-0;
+  }
+  .cal-row {
+    @apply flex items-center justify-between gap-3 py-2;
+    border-bottom: 1px solid rgb(var(--border) / 0.7);
+  }
+  .cal-row:last-child {
+    border-bottom: 0;
+  }
+  .cal-row[data-editing] {
+    @apply block;
+  }
+  .cal-row[data-disabled] .cal-row-text {
+    opacity: 0.55;
+  }
+  .cal-row-main {
+    @apply flex min-w-0 flex-1 items-center gap-3;
+  }
+  .cal-row-text {
+    @apply flex min-w-0 flex-col gap-0.5;
+  }
+  .cal-row-line {
+    @apply flex min-w-0 items-baseline gap-2;
+  }
+  .cal-row-name {
+    @apply truncate text-[13px] font-medium leading-tight;
+    color: rgb(var(--text));
+  }
+  .cal-row-label {
+    @apply shrink-0 text-[11px] leading-none;
+    color: rgb(var(--accent-strong) / 0.85);
+  }
+  .cal-row-sub {
+    @apply flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px] leading-tight;
+    color: rgb(var(--text-faint));
+  }
+  .cal-row-url {
+    @apply truncate;
+    max-width: 22rem;
+  }
+  .cal-row-status::before {
+    content: "·";
+    margin-right: 0.5rem;
+    color: rgb(var(--text-faint) / 0.6);
+  }
+  .cal-row-status[data-tone="error"] {
+    color: rgb(var(--now));
+  }
+  .cal-row-status[data-tone="off"],
+  .cal-row-status[data-tone="muted"] {
+    color: rgb(var(--text-faint) / 0.85);
+  }
+  /* Enable switch — graphite track, amber when on. Mirrors the toggle vocabulary. */
+  .cal-toggle {
+    @apply relative inline-flex shrink-0 items-center rounded-full;
+    width: 30px;
+    height: 18px;
+    padding: 2px;
+    background-color: rgb(var(--border-strong));
+    transition: background-color 180ms var(--ease-snap);
+  }
+  .cal-toggle[data-on] {
+    background-color: rgb(var(--accent) / 0.85);
+  }
+  .cal-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
+  .cal-toggle-knob {
+    @apply block rounded-full;
+    width: 14px;
+    height: 14px;
+    background-color: rgb(var(--accent-fg));
+    transform: translateX(0);
+    transition: transform 180ms var(--ease-snap);
+    box-shadow: 0 1px 2px rgb(var(--shadow) / 0.25);
+  }
+  .cal-toggle[data-on] .cal-toggle-knob {
+    transform: translateX(12px);
+  }
+  .cal-row-actions {
+    @apply inline-flex shrink-0 items-center gap-1;
+  }
+  .cal-row-edit {
+    @apply inline-flex items-center rounded-sm px-1.5 py-1 text-[11px] leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+    letter-spacing: 0.02em;
+  }
+  .cal-row-edit:hover {
+    color: rgb(var(--text));
+    background-color: rgb(var(--accent) / 0.08);
+  }
+  .cal-row-edit:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
+  .cal-row-remove {
+    @apply inline-flex h-6 w-6 items-center justify-center rounded-sm opacity-0;
+    @apply transition-all duration-150 ease-snap;
+    color: rgb(var(--text-faint));
+  }
+  .cal-row:hover .cal-row-remove,
+  .cal-row:focus-within .cal-row-remove {
+    opacity: 1;
+  }
+  .cal-row-remove:hover {
+    color: rgb(var(--now));
+    background-color: rgb(var(--now) / 0.08);
+  }
+  @media (hover: none) {
+    .cal-row-remove {
+      opacity: 1;
+    }
+  }
+
+  /* Inline attach / edit form — name + label on one row, the secret URL beneath. */
+  .cal-add-shell {
+    @apply mt-2;
+  }
+  .cal-add-trigger {
+    @apply mt-3 inline-flex items-center gap-1.5 text-[12px] leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    color: rgb(var(--text-muted));
+  }
+  .cal-add-trigger:hover {
+    color: rgb(var(--accent-strong));
+  }
+  .cal-add-trigger:focus-visible {
+    outline: none;
+    color: rgb(var(--accent-strong));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+    @apply rounded-sm;
+  }
+  .cal-form {
+    @apply flex flex-col gap-2 rounded-md p-3;
+    background-color: rgb(var(--surface));
+    box-shadow: var(--shadow-lift);
+  }
+  .cal-form-row {
+    @apply flex items-center gap-2;
+  }
+  .cal-form-name {
+    @apply min-w-0 flex-1 bg-transparent text-[13px] font-medium leading-none outline-none;
+    color: rgb(var(--text));
+    border-bottom: 1px solid rgb(var(--border-strong));
+    padding-bottom: 3px;
+  }
+  .cal-form-name:focus {
+    border-color: rgb(var(--accent));
+  }
+  .cal-form-name::placeholder {
+    color: rgb(var(--text-faint));
+    font-weight: 400;
+  }
+  .cal-form-sigil {
+    @apply text-[12px] font-medium leading-none;
+    color: rgb(var(--accent-strong) / 0.7);
+  }
+  .cal-form-label {
+    @apply w-28 bg-transparent text-[13px] leading-none outline-none;
+    color: rgb(var(--text));
+    border-bottom: 1px solid rgb(var(--border-strong));
+    padding-bottom: 3px;
+  }
+  .cal-form-label:focus {
+    border-color: rgb(var(--accent));
+  }
+  .cal-form-label::placeholder {
+    color: rgb(var(--text-faint));
+  }
+  .cal-form-url {
+    @apply w-full bg-transparent text-[12px] leading-none outline-none;
+    color: rgb(var(--text-muted));
+    border-bottom: 1px solid rgb(var(--border));
+    padding-bottom: 4px;
+  }
+  .cal-form-url:focus {
+    border-color: rgb(var(--accent));
+    color: rgb(var(--text));
+  }
+  .cal-form-url::placeholder {
+    color: rgb(var(--text-faint) / 0.8);
+  }
+  .cal-form-actions {
+    @apply flex flex-wrap items-center gap-3;
+  }
+  .cal-form-save {
+    @apply inline-flex items-center rounded-sm px-1.5 py-1 text-[10px] uppercase leading-none;
+    @apply transition-colors duration-150 ease-snap;
+    letter-spacing: 0.14em;
+    color: rgb(var(--accent-strong));
+    background-color: rgb(var(--accent) / 0.12);
+  }
+  .cal-form-save:hover {
+    background-color: rgb(var(--accent) / 0.2);
+  }
+  .cal-form-save:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
+  }
+  .cal-form-cancel {
+    @apply text-[10px] uppercase leading-none;
+    letter-spacing: 0.14em;
+    color: rgb(var(--text-faint));
+    @apply transition-colors duration-150 ease-snap;
+  }
+  .cal-form-cancel:hover {
+    color: rgb(var(--text));
+  }
+  .cal-form-hint {
+    @apply ml-auto text-[10px] leading-none;
+    color: rgb(var(--text-faint) / 0.85);
+    letter-spacing: 0.02em;
   }
 
   /* ── Label manager ──────────────────────────────────────────────────────── */

@@ -864,9 +864,11 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                           : durationMin(b);
                       const height = Math.max(dur * PX_PER_MIN, 22);
                       const movable = b.source === "kairos" && !past;
+                      const isGcal = b.source === "gcal";
                       const isEditing = editingId === b.id;
                       const filteredOut = !matchesLabelFilter(b.tags, filterLabels);
                       const isActive =
+                        !isGcal &&
                         isTodayCol &&
                         nowMin != null &&
                         nowMin >= topMin &&
@@ -875,6 +877,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                       const cls = [
                         "block",
                         movable ? "block-kairos" : "",
+                        isGcal ? "block-gcal" : "",
                         isDragging && !isResizing ? "block-dragging" : "",
                         isResizing ? "block-resizing" : "",
                         isEditing ? "block-editing" : "",
@@ -897,18 +900,28 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
                           aria-label={
                             movable
                               ? `${b.title || "Untitled"}, ${fmtClock(topMin)} to ${fmtClock(topMin + dur)}`
-                              : undefined
+                              : isGcal
+                                ? `${b.title || "Busy"}, ${fmtClock(topMin)} to ${fmtClock(topMin + dur)}, from calendar (read-only)`
+                                : undefined
                           }
                           aria-keyshortcuts={
                             movable ? "ArrowUp ArrowDown Shift+ArrowUp Enter Delete" : undefined
                           }
                         >
+                          {isGcal && (
+                            <span className="block-gcal-glyph" aria-hidden="true">
+                              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="4.5" width="18" height="16" rx="2" />
+                                <path d="M3 9h18M8 2.5v4M16 2.5v4" />
+                              </svg>
+                            </span>
+                          )}
                           {isActive && !isEditing && (
                             <span className="block-now-glyph" aria-label="Now">
                               now
                             </span>
                           )}
-                          {b.tags.length > 0 && !isEditing && !isActive && (
+                          {!isGcal && b.tags.length > 0 && !isEditing && !isActive && (
                             <BlockTagDots tags={b.tags} />
                           )}
                           {movable && !isEditing && confirmDeleteId !== b.id && (

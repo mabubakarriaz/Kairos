@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { LabelManager } from "@/components/LabelManager";
+import { CalendarManager } from "@/components/CalendarManager";
 import {
   getLabelUsage,
   listLabels,
   listUnregisteredLabels,
 } from "@/server/labels";
+import { listCalendars } from "@/server/calendars";
+import { syncCalendarsIfStale } from "@/server/calendar-sync";
 import {
   PERIOD_LABEL,
   buildMeter,
@@ -28,7 +31,7 @@ import {
   weekWindow,
 } from "@/lib/time";
 import { DEFAULT_TZ, TZ_COOKIE, isValidTimeZone, zonedDayStartUtc } from "@/lib/timezone";
-import type { BudgetPeriod, Label } from "@/lib/types";
+import type { BudgetPeriod, Calendar, Label } from "@/lib/types";
 
 // Reads ?range / ?date + cookie + live DB. Never prerendered.
 export const dynamic = "force-dynamic";
@@ -122,17 +125,23 @@ export default async function SettingsPage({
   const { startUtc, endUtc, label: rangeLabel } = rangeWindow(range, date, tz);
   const rangeDays = daysBetweenUtc(startUtc, endUtc);
 
+  // Refresh external events if any calendar has gone stale; the listing below
+  // then reflects the fresh "synced" times. Best-effort — never blocks the page.
+  await syncCalendarsIfStale(tz);
+
   let labels: Label[] = [];
   let untracked: string[] = [];
   let usage = new Map<string, number>();
+  let calendars: Calendar[] = [];
   let loadError: string | null = null;
 
   try {
     labels = await listLabels();
     const known = new Set(labels.map((l) => l.slug));
-    [untracked, usage] = await Promise.all([
+    [untracked, usage, calendars] = await Promise.all([
       listUnregisteredLabels(known),
       getLabelUsage(startUtc, endUtc),
+      listCalendars(),
     ]);
   } catch (e) {
     loadError = e instanceof Error ? e.message : String(e);
@@ -170,6 +179,11 @@ export default async function SettingsPage({
           <p className="mt-1 text-xs text-ink-muted">{loadError}</p>
         </div>
       )}
+
+      <section className="settings-section" aria-labelledby="calendars-heading">
+        <h2 id="calendars-heading" className="settings-section-head">Calendars</h2>
+        <CalendarManager calendars={calendars} />
+      </section>
 
       <section className="settings-section" aria-labelledby="labels-heading">
         <h2 id="labels-heading" className="settings-section-head">Labels</h2>

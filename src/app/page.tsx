@@ -4,6 +4,7 @@ import { DayColumn } from "@/components/DayColumn";
 import { WeekColumns, type WeekDay } from "@/components/WeekColumns";
 import { MonthGrid, type MonthCell } from "@/components/MonthGrid";
 import { getBlocksInRange } from "@/server/schedule";
+import { syncCalendarsIfStale } from "@/server/calendar-sync";
 import { getFreeSlots } from "@/server/freeslots";
 import { getCheckpointsForDate } from "@/server/checkpoints";
 import { getRecentTags } from "@/server/tasks";
@@ -84,6 +85,10 @@ export default async function Page({
   const filterLabels = parseLabelsParam(labelsParam);
   const labelsQuery = filterLabels.join(",");
   const isToday = rangeContainsToday(view, date, today);
+
+  // Pull fresh Google events before the view fetches blocks, but only when a
+  // calendar has gone stale — a normal load does no network and just reads the DB.
+  await syncCalendarsIfStale(tz);
 
   const widthClass =
     view === "day" ? "max-w-3xl" : view === "month" ? "max-w-6xl" : "max-w-7xl";

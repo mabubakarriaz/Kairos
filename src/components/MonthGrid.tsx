@@ -111,6 +111,7 @@ export function MonthGrid({
                         key={b.id}
                         className="month-cell-dot"
                         data-muted={muted || undefined}
+                        data-gcal={b.source === "gcal" || undefined}
                       />
                     );
                   })}

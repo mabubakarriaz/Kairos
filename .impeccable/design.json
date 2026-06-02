@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-06-01T00:00:00Z",
+  "generatedAt": "2026-06-02T00:00:00Z",
   "title": "Design System: Kairos",
   "extensions": {
     "colorMeta": {
@@ -63,6 +63,12 @@
         "displayName": "Ember",
         "canonical": "oklch(58% 0.14 35)",
         "tonalRamp": ["#3a1a10", "#5c2818", "#7a3624", "#9a4732", "#c0543a", "#db7250", "#e8967a", "#f5c4b0"]
+      },
+      "gcal": {
+        "role": "tertiary",
+        "displayName": "Calendar Graphite",
+        "canonical": "oklch(90% 0.012 250)",
+        "tonalRamp": ["#272d37", "#343c49", "#4a5566", "#6f7989", "#8a93a2", "#aebacb", "#dee3e9", "#eef1f5"]
       },
       "hairline": {
         "role": "neutral",
@@ -154,6 +160,14 @@
       "css": ".ds-block { position: relative; box-sizing: border-box; padding: 6px 12px; border-radius: 6px; background-color: #f4e2bb; color: #8a5b1e; min-width: 220px; min-height: 56px; cursor: grab; user-select: none; transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-block:hover { background-color: #ebd19e; } .ds-block:focus-visible { outline: none; box-shadow: 0 0 0 1px rgba(176, 122, 53, 0.55); } .ds-block-title { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; line-height: 1.25; letter-spacing: -0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-block-time { margin-top: 2px; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1.25; font-variant-numeric: tabular-nums; color: rgba(138, 91, 30, 0.75); } .ds-block-time-sep { color: rgba(138, 91, 30, 0.45); }"
     },
     {
+      "name": "Calendar Block",
+      "kind": "custom",
+      "refersTo": "block-gcal",
+      "description": "Read-only external Google-calendar event. Same footprint and typography as a Time Block, but Calendar Graphite instead of amber and a corner calendar mark. Not draggable, not editable; wears its calendar's label.",
+      "html": "<div class=\"ds-block-gcal\" aria-label=\"Sprint planning, 11:00 to 12:00, from calendar (read-only)\"><span class=\"ds-gcal-glyph\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4.5\" width=\"18\" height=\"16\" rx=\"2\"></rect><path d=\"M3 9h18M8 2.5v4M16 2.5v4\"></path></svg></span><div class=\"ds-block-gcal-title\">Sprint planning</div><div class=\"ds-block-gcal-time\"><span>11:00</span><span class=\"ds-gcal-sep\"> &ndash; </span><span>12:00</span></div><div class=\"ds-block-gcal-tag\">#tkxel</div></div>",
+      "css": ".ds-block-gcal { position: relative; box-sizing: border-box; padding: 6px 12px; border-radius: 6px; background-color: #dee3e9; color: #4a5566; min-width: 220px; min-height: 56px; cursor: default; user-select: none; transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1); } .ds-block-gcal:hover { background-color: #d0d6de; } .ds-gcal-glyph { position: absolute; right: 8px; top: 6px; display: inline-flex; color: rgba(74, 85, 102, 0.5); pointer-events: none; } .ds-gcal-glyph svg { width: 12px; height: 12px; } .ds-block-gcal-title { padding-right: 14px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; line-height: 1.25; letter-spacing: -0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-block-gcal-time { margin-top: 2px; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1.25; font-variant-numeric: tabular-nums; color: rgba(74, 85, 102, 0.78); } .ds-gcal-sep { color: rgba(74, 85, 102, 0.45); } .ds-block-gcal-tag { margin-top: 2px; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; line-height: 1.25; color: rgba(74, 85, 102, 0.72); }"
+    },
+    {
       "name": "Inline Composer",
       "kind": "input",
       "refersTo": "composer",
@@ -243,6 +257,7 @@
     "rules": [
       { "name": "The Ochre-or-Nothing Rule", "body": "The single chromatic accent on any chrome (date, controls, focus, ring, link) is Deep Ochre or Burnt Ochre. Never blue, never emerald, never violet. If a surface needs to feel 'active' or 'available', use type weight, position, or hairline density. The block is the only surface allowed to wear a saturated wash.", "section": "colors" },
       { "name": "The Graphite-Not-Emerald Rule", "body": "Free slots and 'available time' signage are graphite, never green. Green is the reflexive choice; refusing it is the point. Graphite recedes, which is what a free slot is: an absence of work, not a celebration.", "section": "colors" },
+      { "name": "The Borrowed-Time Rule", "body": "Amber is reserved for blocks you authored. External calendar events (Google) wear Calendar Graphite, never amber, because they are not time you blocked, they are time claimed on you from elsewhere. They render read-only (no drag, resize, edit, or delete) with a small calendar mark in the corner, and may overlap your amber blocks freely. The graphite says 'not yours to move' without a word of UI copy.", "section": "colors" },
       { "name": "The One Ember Rule", "body": "Persistent, filled Ember belongs to one thing only: the now-mark cluster (now-line, gutter label, active-block inset ring, and 'X left' tail are channels of the single fact 'now'). Ember is allowed in three narrow, non-competing roles: an inline error string (text only, never a filled or bordered alert box), a destructive hover on a delete affordance (transient, pointer-only), and the budget overrun tail on the settings surface (where the now-line never appears). The forbidden move is a resting, boxed, or decorative Ember that reads as a second 'now'.", "section": "colors" },
       { "name": "The Warm-Neutral Rule", "body": "Every neutral is tinted toward warm (chroma ~0.005). #000 and #fff are forbidden. Slate, cool grey, and 'Tailwind zinc' are forbidden. The palette's temperature is the brand.", "section": "colors" },
       { "name": "The Tabular-Numeral Rule", "body": "Any numeral that names a quantity of time (hours, minutes, durations, dates, counts) is set in JetBrains Mono with tabular-nums. Every such element carries .num or time or .block-time or .hour-label. Inter is forbidden for numerals.", "section": "typography" },
@@ -285,7 +300,8 @@
       "Don't use the flat, equal-weight hierarchy of everything competing for attention at the same scale. The day grid is the hero; everything else is staff.",
       "Don't wrap a transient error in a filled or bordered alert box. Errors are a quiet Ember text line (no fill, no border, no icon), per the One Ember Rule.",
       "Don't declare a widget role you don't implement: no role=grid without arrow-key cell navigation, no role=menu / menuitemcheckbox on a multi-select filter. Over-promised ARIA is worse than none.",
-      "Don't color-code the week-view block tags. They are uniform graphite density dots (plus +N), never a per-label palette."
+      "Don't color-code the week-view block tags. They are uniform graphite density dots (plus +N), never a per-label palette.",
+      "Don't paint external Google events in amber or give them edit/drag/delete affordances. Amber is for your own blocks; calendar events are Calendar Graphite and read-only (the Borrowed-Time Rule). Don't render the full secret iCal URL in the UI; mask it."
     ]
   }
 }

@@ -20,6 +20,13 @@ import {
   removeLabel,
   setBudget,
 } from "@/server/labels";
+import {
+  createCalendar,
+  deleteCalendar,
+  setCalendarEnabled,
+  updateCalendar,
+} from "@/server/calendars";
+import { syncAllCalendars } from "@/server/calendar-sync";
 import { isoAt } from "@/lib/time";
 import { normalizeLabel, parseLabelsInput } from "@/lib/labels";
 import { isBudgetPeriod } from "@/lib/budgets";
@@ -300,4 +307,109 @@ export async function clearBudgetAction(slugRaw: string): Promise<ActionResult> 
 
   revalidatePath("/settings");
   return { ok: true };
+}
+
+// ── Calendars (Google Calendar sync) ─────────────────────────────────────────
+// Each calendar is a secret iCal URL + a label its events wear. Events sync
+// read-only into scheduled_blocks; the grid and free-slots pick them up. CRUD
+// touches both rooms: the registry lives on /settings, the events on /.
+
+const CAL_NAME_MAX = 60;
+
+/** Accept https iCal URLs; normalize a pasted webcal:// link to https://. */
+function normalizeIcsUrl(raw: string): string | null {
+  let url = raw.trim();
+  if (!url) return null;
+  if (/^webcal:\/\//i.test(url)) url = url.replace(/^webcal:\/\//i, "https://");
+  if (!/^https:\/\/\S+$/i.test(url)) return null;
+  if (url.length > 2000) return null;
+  return url;
+}
+
+function parseCalendarInput(formData: FormData): {
+  name: string;
+  icsUrl: string;
+  label: string;
+  error?: string;
+} {
+  const name = String(formData.get("name") ?? "").trim().replace(/\s+/g, " ");
+  const icsUrl = normalizeIcsUrl(String(formData.get("icsUrl") ?? ""));
+  const label = normalizeLabel(String(formData.get("label") ?? ""));
+
+  if (!name) return { name: "", icsUrl: "", label: "", error: "Give the calendar a name." };
+  if (name.length > CAL_NAME_MAX) return { name, icsUrl: "", label: "", error: "Name is too long." };
+  if (!icsUrl) {
+    return { name, icsUrl: "", label: "", error: "Paste the calendar's secret address in iCal format (an https URL)." };
+  }
+  if (!label) {
+    return { name, icsUrl, label: "", error: "Pick a label: letters, digits, - or _." };
+  }
+  return { name, icsUrl, label };
+}
+
+/** Attach a new calendar. */
+export async function addCalendarAction(formData: FormData): Promise<ActionResult> {
+  const { name, icsUrl, label, error } = parseCalendarInput(formData);
+  if (error) return { ok: false, error };
+
+  const res = await createCalendar({ name, icsUrl, label });
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Edit a calendar's name / URL / label. */
+export async function updateCalendarAction(id: string, formData: FormData): Promise<ActionResult> {
+  if (!id) return { ok: false, error: "Missing calendar id." };
+  const { name, icsUrl, label, error } = parseCalendarInput(formData);
+  if (error) return { ok: false, error };
+
+  const res = await updateCalendar(id, { name, icsUrl, label });
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Enable or disable a calendar (disabling clears its events). */
+export async function toggleCalendarAction(id: string, enabled: boolean): Promise<ActionResult> {
+  if (!id) return { ok: false, error: "Missing calendar id." };
+
+  const res = await setCalendarEnabled(id, enabled);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Detach a calendar (cascade removes its events). */
+export async function deleteCalendarAction(id: string): Promise<ActionResult> {
+  if (!id) return { ok: false, error: "Missing calendar id." };
+
+  const res = await deleteCalendar(id);
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Force a sync of every enabled calendar now (the "Sync now" button). */
+export async function syncCalendarsAction(): Promise<ActionResult> {
+  const tz = await activeTz();
+  try {
+    const summary = await syncAllCalendars(tz);
+    if (summary.failed > 0 && summary.synced === 0) {
+      return { ok: false, error: "Sync failed. Check each calendar's URL below." };
+    }
+    revalidatePath("/settings");
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Sync failed." };
+  }
 }

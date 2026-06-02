@@ -14,12 +14,31 @@ export interface ScheduledBlock {
   source: BlockSource;
   startUtc: string; // ISO-8601 UTC
   endUtc: string; // ISO-8601 UTC
-  title: string; // task title, or "(busy)" for gcal blocks
-  tags: string[]; // task labels (normalized); empty for gcal
+  title: string; // task title, or the event summary for gcal blocks
+  tags: string[]; // task labels (normalized); the calendar's label for gcal
   /** Non-null when this block is one occurrence of a recurring series. */
   seriesId: string | null;
   /** The recurrence kind on this occurrence's task row, if part of a series. */
   recurrenceKind: RecurrenceKind | null;
+  /** The calendar a gcal block came from; null for kairos blocks. */
+  calendarId: string | null;
+}
+
+/**
+ * An attached Google calendar. Events sync read-only into scheduled_blocks as
+ * `source='gcal'` rows wearing this calendar's `label`. `lastSyncedAt` is null
+ * until the first successful sync; `lastSyncError` holds the most recent failure
+ * (cleared on the next success).
+ */
+export interface Calendar {
+  id: string;
+  name: string;
+  icsUrl: string;
+  label: string;
+  enabled: boolean;
+  position: number;
+  lastSyncedAt: string | null;
+  lastSyncError: string | null;
 }
 
 export interface FreeSlot {

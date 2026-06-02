@@ -17,6 +17,9 @@ colors:
   block-strong: "#ebd19e"
   free: "#6f7989"
   free-strong: "#4d5664"
+  gcal: "#dee3e9"
+  gcal-strong: "#d0d6de"
+  gcal-ink: "#4a5566"
   now: "#c0543a"
   grid-line: "#e8e0ce"
   shadow-ink: "#18120c"
@@ -34,6 +37,9 @@ colors:
   block-strong-dark: "#4c3c24"
   free-dark: "#8a93a2"
   free-strong-dark: "#afb7c4"
+  gcal-dark: "#272d37"
+  gcal-strong-dark: "#343c49"
+  gcal-ink-dark: "#aebacb"
   now-dark: "#db7250"
 typography:
   display:
@@ -91,6 +97,14 @@ components:
     backgroundColor: "{colors.block-strong}"
   block-dragging:
     backgroundColor: "{colors.block-strong}"
+  block-gcal:
+    backgroundColor: "{colors.gcal}"
+    textColor: "{colors.gcal-ink}"
+    rounded: "{rounded.sm}"
+    padding: "6px 12px"
+    typography: "{typography.title}"
+  block-gcal-hover:
+    backgroundColor: "{colors.gcal-strong}"
   composer:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
@@ -178,6 +192,7 @@ A two-pole palette with one alarm. Amber/ochre is the work being done (accent, b
 
 - **Graphite Mist** (`#6f7989`): the cool low-chroma blue-grey used exclusively for free-slot signage. Chosen over emerald (which would be the reflexive "available" color in any other tool) because emerald insists on attention; graphite recedes.
 - **Graphite Strong** (`#4d5664`): the free-slot label color. Slightly cooler than the surrounding warm neutrals so the eye registers it as a different category of mark.
+- **Calendar Graphite** (`#dee3e9` fill, `#4a5566` ink): the cool graphite wash worn by external Google-calendar events (`.block-gcal`). A filled block, distinct from the free-slot hairline, but deliberately *not* amber: borrowed time reads as a different material from the work you blocked yourself. Dark scene pairs to `#272d37` fill / `#aebacb` ink.
 - **Ember** (`#c0543a`): a desaturated red-ochre used in exactly two places: the now-line hairline + gutter dot, and the "X left" tail on blocks the now-line is currently crossing. Used once per screen, never as a UI accent.
 
 ### Neutral
@@ -201,6 +216,8 @@ Each role has a dark-scene equivalent, also warm-tinted. Notable shifts: **Deep 
 **The Ochre-or-Nothing Rule.** The single chromatic accent on any chrome (date, controls, focus, ring, link) is Deep Ochre or Burnt Ochre. Never blue, never emerald, never violet. If a surface needs to feel "active" or "available", use type weight, position, or hairline density. The block is the only surface allowed to wear a saturated wash.
 
 **The Graphite-Not-Emerald Rule.** Free slots and "available time" signage are graphite, never green. Green is the reflexive choice; refusing it is the point. Graphite recedes, which is what a free slot is: an absence of work, not a celebration.
+
+**The Borrowed-Time Rule.** Amber is reserved for blocks *you* authored. External calendar events (Google) wear Calendar Graphite, never amber, because they are not time you blocked, they are time claimed on you from elsewhere. They render read-only (no drag, no resize, no edit, no delete) with a small calendar mark in the corner, and may overlap your amber blocks freely. The graphite says "not yours to move" without a single word of UI copy.
 
 **The One Ember Rule.** Persistent, filled Ember belongs to one thing only: the now-mark cluster (now-line, gutter label, active-block inset ring, and "X left" tail are all channels of the single fact "now"). No second persistent Ember region may compete with it. Ember is allowed in three narrow, non-competing roles: an inline **error string** (text only, never a filled or bordered alert box, the day/week reschedule-failure line is quiet Ember text for this reason), a **destructive hover** on a delete affordance (transient, pointer-only), and the **budget overrun** tail on the settings surface (legitimate because the now-line never appears there, so the rule still holds per screen). The forbidden move is a resting, boxed, or decorative Ember that reads as a second "now."
 
@@ -266,6 +283,16 @@ The block is the system's single most important surface. Every other component e
 - **Editing:** Editing Ring outline appears. The amber wash stays. A bare transparent input replaces the title with pixel-parity font sizing so the text does not shift between display and edit modes.
 - **Delete affordance:** a 20x20 ghost glyph in the top-right corner, invisible until block hover or focus, then 100% visible (mobile always visible). Tinted Burnt Ochre, not red.
 - **Resize handle:** invisible until block hover; a 2px-tall capsule line at the bottom edge that brightens to Burnt Ochre @ 35% on hover and Burnt Ochre @ 70% during active resize, growing from 18px to 24px wide.
+
+### Calendar Block (external Google event)
+
+A read-only sibling of the Time Block, synced from an attached Google calendar. Same footprint and typography as a time-block so the day reads as one schedule, but a different material so you always know what's yours.
+
+- **Shape & type:** identical to the Time Block (rounded-md, same `left/right` insets per view, same 13px/12px title and 10px tabular-mono time row).
+- **Fill:** **Calendar Graphite** (`#dee3e9`), text in Calendar Graphite ink (`#4a5566`); hover intensifies to `#d0d6de`. Never amber (the Borrowed-Time Rule).
+- **Calendar mark:** a 12px stroke-only calendar glyph in the top-right corner at 50% ink opacity, where a Kairos block keeps its delete-X. It is the one tell that this time isn't yours to move; the title pads right to clear it.
+- **Label:** the block wears its calendar's assigned label (`#tkxel`, `#personal`) as its only tag, graphite-tinted in day view and a graphite dot in week/month view.
+- **Read-only:** no grab cursor, not focusable for editing, no delete or resize handle, no `block-active` amber takeover when the now-line crosses it. Interaction is gated on `source === 'kairos'` everywhere. Calendar events may overlap your blocks (the no-overlap constraint exempts them) but still count as busy for free-slots and booked/open day stats.
 
 ### Free-Slot Marker
 
@@ -370,7 +397,8 @@ A calm 6×7 grid that trades time precision for shape-at-a-glance. It is a **nav
 A deliberate second room, not chrome bolted onto the grid. Reached by a **gear glyph-btn** added to the fixed top-right corner cluster (now: tz chip · theme · settings · logout). The route is `/settings`, rendered in the same `mx-auto max-w-3xl` single column as the day view, flat and hairline-separated. No SaaS settings sprawl: no card grid, no sidebar of sections, no nested panels.
 
 - **Header:** a quiet `← back to today` link (10–11px, `ink-faint` → `ink`) above the page title, which is the only **Display** element on the surface (the Single-Display Rule still holds, scoped per page).
-- **Sections** stack vertically, separated by a 1px Hairline top border, each titled with a **Label**-style heading (11px, uppercase, tracking-0.12em, `ink-muted`).
+- **Sections** stack vertically, separated by a 1px Hairline top border, each titled with a **Label**-style heading (11px, uppercase, tracking-0.12em, `ink-muted`). Order: **Calendars**, then Labels, then Budgets.
+- **Calendars region:** the Google-sync room. A quiet status bar (`2 synced · 3m ago`) with a **Sync now** button (amber chip; turns Ember when a feed is in error, with a spinning glyph while syncing), above a flat list of attached calendars. Each row is an enable **switch** (graphite track, amber when on), the calendar name + its `#label`, a masked URL (`host/…/basic.ics`, never the full secret), and a status string (`synced 2m ago` / `paused` / a truncated error in Ember). Editing or attaching opens an inline paper-lift form (name + `#label` on one row, the secret iCal URL beneath), never a modal. Same composer vocabulary as the label adder; the secret address is server-only and never rendered in full.
 - **Labels region:** a one-line composer (`#` sigil + mono input + `↵ add` hint) that lifts to the Composer ring on focus, above a flat list. Each row is a mono `#slug` tag, a budget cell that reads `40h /wk` (or `set budget`), and a ghost remove X that appears on row hover. Editing a budget swaps the cell in place for an inline editor (mono hours input + four period chips Day/Week/Month/Quarter + `↵ save` / `clear`), never a modal. Free-text tags already on tasks but not yet registered appear under a faint `in use, not yet added` row as one-tap promotion pills.
 
 ### Budget Meter (the budgets read)
@@ -409,6 +437,7 @@ The single-password gate, composed as a scene rather than a form on a blank page
 - **Do** cap body line length at 65-75ch in any long-form copy region.
 - **Do** give every interactive control a visible focus state (the WCAG floor). Chrome buttons use the offset accent ring (`focus-visible:ring-1 ring-accent/50 ring-offset-2`); inline editor pills and chips use a flush `box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55)`. A keyboard-reachable control with no `:focus-visible` is a bug.
 - **Do** keep ARIA honest: a role is a promise of behavior. The label filter is a disclosure of `aria-pressed` toggle buttons, not a `role="menu"`; the month grid is a set of day-links, not a `role="grid"`.
+- **Do** render external Google-calendar events in **Calendar Graphite**, read-only, with a corner calendar mark (the Borrowed-Time Rule). Your authored blocks stay amber; the two materials must never be confused.
 
 ### Don't:
 
@@ -432,3 +461,4 @@ The single-password gate, composed as a scene rather than a form on a blank page
 - **Don't** wrap a transient error in a filled or bordered alert box. Errors are a quiet Ember **text** line (no fill, no border, no icon), per the One Ember Rule. A boxed red alert is the SaaS reflex this system rejects.
 - **Don't** declare a widget role you don't implement: no `role="grid"` without arrow-key cell navigation, no `role="menu"` / `menuitemcheckbox` on a multi-select filter. Over-promised ARIA is worse than none.
 - **Don't** color-code the week-view block tags. They are uniform graphite density dots (plus `+N`), never a per-label palette.
+- **Don't** paint external Google events in amber or give them edit/drag/delete affordances. Amber is for your own blocks; calendar events are graphite and read-only (the Borrowed-Time Rule). Don't render the full secret iCal URL anywhere in the UI; mask it.

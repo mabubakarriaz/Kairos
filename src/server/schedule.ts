@@ -9,26 +9,41 @@ type TaskJoin = {
   recurrence_kind: RecurrenceKind | null;
 };
 
+type CalendarJoin = {
+  label: string | null;
+};
+
 interface BlockRow {
   id: string;
   task_id: string | null;
   source: "kairos" | "gcal";
   start_utc: string;
   end_utc: string;
+  title: string | null;
+  calendar_id: string | null;
   tasks: TaskJoin | TaskJoin[] | null;
+  calendars: CalendarJoin | CalendarJoin[] | null;
 }
 
 function taskOf(row: BlockRow): TaskJoin | null {
   return Array.isArray(row.tasks) ? row.tasks[0] ?? null : row.tasks;
 }
 
+function calendarOf(row: BlockRow): CalendarJoin | null {
+  return Array.isArray(row.calendars) ? row.calendars[0] ?? null : row.calendars;
+}
+
 function titleOf(row: BlockRow): string {
-  if (row.source === "gcal") return "(busy)";
+  if (row.source === "gcal") return row.title?.trim() || "(busy)";
   return taskOf(row)?.title ?? "Task";
 }
 
 function tagsOf(row: BlockRow): string[] {
-  if (row.source === "gcal") return [];
+  // A gcal block wears its calendar's label as its only tag.
+  if (row.source === "gcal") {
+    const label = calendarOf(row)?.label;
+    return label ? [label] : [];
+  }
   return taskOf(row)?.tags ?? [];
 }
 
@@ -38,7 +53,7 @@ export async function getBlocksInRange(startUtc: string, endUtc: string): Promis
   const { data, error } = await supabase
     .from("scheduled_blocks")
     .select(
-      "id, task_id, source, start_utc, end_utc, tasks(title, tags, series_id, recurrence_kind)",
+      "id, task_id, source, start_utc, end_utc, title, calendar_id, tasks(title, tags, series_id, recurrence_kind), calendars(label)",
     )
     .lt("start_utc", endUtc)
     .gt("end_utc", startUtc)
@@ -58,6 +73,7 @@ export async function getBlocksInRange(startUtc: string, endUtc: string): Promis
       tags: tagsOf(row),
       seriesId: row.source === "kairos" ? t?.series_id ?? null : null,
       recurrenceKind: row.source === "kairos" ? t?.recurrence_kind ?? null : null,
+      calendarId: row.calendar_id,
     };
   });
 }

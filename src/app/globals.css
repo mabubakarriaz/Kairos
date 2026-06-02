@@ -1447,6 +1447,23 @@
   .filter-pill[data-active] .filter-pill-mark {
     background-color: rgb(var(--accent));
   }
+  /* Checkpoint-visibility toggle. Reuses the filter-pill button so it inherits
+     the hover/focus/engaged states, but its mark is a short stroke (the grid's
+     checkpoint tick in miniature) rather than the label dot, keeping the two
+     status pills distinct. The stroke goes accent when checkpoints are hidden. */
+  .checkpoint-toggle {
+    @apply relative inline-flex items-center;
+  }
+  .filter-pill-tick {
+    @apply inline-block w-3 align-middle;
+    height: 2px;
+    border-radius: 1px;
+    background-color: rgb(var(--text-faint) / 0.6);
+    transition: background-color 150ms var(--ease-snap);
+  }
+  .filter-pill[data-active] .filter-pill-tick {
+    background-color: rgb(var(--accent));
+  }
   .filter-pill-clear {
     @apply inline-flex h-5 w-5 items-center justify-center rounded-sm;
     @apply transition-colors duration-150 ease-snap;

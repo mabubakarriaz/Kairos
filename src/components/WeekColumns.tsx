@@ -17,9 +17,11 @@ import {
   snapMinutes,
 } from "@/lib/time";
 import { matchesLabelFilter } from "@/lib/labels";
+import { setCheckpointsHiddenCookie } from "@/lib/prefs";
 import type { Checkpoint, FreeSlot, ScheduledBlock } from "@/lib/types";
 import { InlineComposer } from "./InlineComposer";
 import { CheckpointEditor } from "./CheckpointEditor";
+import { CheckpointToggle } from "./CheckpointToggle";
 import { LabelFilter } from "./LabelFilter";
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
@@ -48,6 +50,7 @@ interface Props {
   today: string;
   filterLabels: string[];
   labelsQuery: string;
+  checkpointsHidden: boolean;
   recentTags: string[];
   view: "5d" | "week";
 }
@@ -68,7 +71,14 @@ type CheckpointEditState =
   | { mode: "edit"; dateIdx: number; id: string; label: string; at: string; topMin: number }
   | null;
 
-export function WeekColumns({ days, today, filterLabels, recentTags, view }: Props) {
+export function WeekColumns({
+  days,
+  today,
+  filterLabels,
+  checkpointsHidden,
+  recentTags,
+  view,
+}: Props) {
   const router = useRouter();
   const todayIdx = days.findIndex((d) => d.date === today);
   const isPastByCol = useMemo(() => days.map((d) => d.date < today), [days, today]);
@@ -285,6 +295,12 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
           colIdx = isPastByCol.findIndex((p) => !p);
           if (colIdx < 0) return;
         }
+        // Placing a checkpoint while the layer is hidden would drop it out of
+        // sight. Reveal the layer first so the new one — and the rest — show.
+        if (checkpointsHidden) {
+          setCheckpointsHiddenCookie(false);
+          router.refresh();
+        }
         const seed =
           colIdx === todayIdx && nowMin != null ? Math.max(0, nowMin) : 9 * 60;
         setCpEdit({ mode: "new", dateIdx: colIdx, topMin: snapMinutes(seed) });
@@ -292,7 +308,7 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pickComposerTarget, todayIdx, nowMin, isPastByCol]);
+  }, [pickComposerTarget, todayIdx, nowMin, isPastByCol, checkpointsHidden, router]);
 
   const durationMin = (b: ScheduledBlock) =>
     (new Date(b.endUtc).getTime() - new Date(b.startUtc).getTime()) / 60_000;
@@ -1045,6 +1061,8 @@ export function WeekColumns({ days, today, filterLabels, recentTags, view }: Pro
       <div className="status-line">
         <div className="status-line-left">
           <LabelFilter filterLabels={filterLabels} inViewLabels={inViewLabels} />
+          <span className="status-line-sep" aria-hidden="true" />
+          <CheckpointToggle hidden={checkpointsHidden} />
           <span className="status-line-sep" aria-hidden="true" />
           <StatusLeft
             nextFree={nextFree}

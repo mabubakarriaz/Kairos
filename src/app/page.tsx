@@ -25,7 +25,12 @@ import {
   type WeekStart,
 } from "@/lib/time";
 import { parseLabelsParam } from "@/lib/labels";
-import { WEEK_START_COOKIE, parseWeekStart } from "@/lib/prefs";
+import {
+  CHECKPOINTS_COOKIE,
+  WEEK_START_COOKIE,
+  parseCheckpointsHidden,
+  parseWeekStart,
+} from "@/lib/prefs";
 import {
   DEFAULT_TZ,
   TZ_COOKIE,
@@ -60,6 +65,11 @@ async function resolveWeekStart(): Promise<WeekStart> {
   return parseWeekStart(jar.get(WEEK_START_COOKIE)?.value);
 }
 
+async function resolveCheckpointsHidden(): Promise<boolean> {
+  const jar = await cookies();
+  return parseCheckpointsHidden(jar.get(CHECKPOINTS_COOKIE)?.value);
+}
+
 function safeDecode(raw: string): string {
   try {
     return decodeURIComponent(raw);
@@ -90,6 +100,7 @@ export default async function Page({
   const view = parseView(viewParam);
   const today = todayInTz(tz);
   const weekStart = await resolveWeekStart();
+  const checkpointsHidden = await resolveCheckpointsHidden();
   const filterLabels = parseLabelsParam(labelsParam);
   const labelsQuery = filterLabels.join(",");
   const isToday = rangeContainsToday(view, date, today, weekStart);
@@ -111,7 +122,13 @@ export default async function Page({
         labelsQuery={labelsQuery}
       />
       {view === "day" ? (
-        <DayView date={date} tz={tz} filterLabels={filterLabels} labelsQuery={labelsQuery} />
+        <DayView
+          date={date}
+          tz={tz}
+          filterLabels={filterLabels}
+          labelsQuery={labelsQuery}
+          checkpointsHidden={checkpointsHidden}
+        />
       ) : view === "month" ? (
         <MonthView
           date={date}
@@ -128,6 +145,7 @@ export default async function Page({
           weekStart={weekStart}
           filterLabels={filterLabels}
           labelsQuery={labelsQuery}
+          checkpointsHidden={checkpointsHidden}
         />
       )}
     </div>
@@ -139,11 +157,13 @@ async function DayView({
   tz,
   filterLabels,
   labelsQuery,
+  checkpointsHidden,
 }: {
   date: string;
   tz: string;
   filterLabels: string[];
   labelsQuery: string;
+  checkpointsHidden: boolean;
 }) {
   const today = todayInTz(tz);
   const isToday = date === today;
@@ -158,7 +178,8 @@ async function DayView({
   const [blocksRes, freeRes, cpRes, recentRes] = await Promise.allSettled([
     getBlocksInRange(startUtc, endUtc),
     getFreeSlots(startUtc, endUtc, 5),
-    getCheckpointsForDate(date),
+    // Skip the DB read entirely when the checkpoint layer is hidden.
+    checkpointsHidden ? Promise.resolve<Checkpoint[]>([]) : getCheckpointsForDate(date),
     getRecentTags(),
   ]);
   if (blocksRes.status === "fulfilled") blocks = blocksRes.value;
@@ -181,6 +202,7 @@ async function DayView({
         blocks={blocks}
         freeSlots={freeSlots}
         checkpoints={checkpoints}
+        checkpointsHidden={checkpointsHidden}
         isToday={isToday}
         isPast={isPast}
         filterLabels={filterLabels}
@@ -259,6 +281,7 @@ async function MultiDayView({
   weekStart,
   filterLabels,
   labelsQuery,
+  checkpointsHidden,
 }: {
   date: string;
   tz: string;
@@ -266,6 +289,7 @@ async function MultiDayView({
   weekStart: WeekStart;
   filterLabels: string[];
   labelsQuery: string;
+  checkpointsHidden: boolean;
 }) {
   const today = todayInTz(tz);
   const dates = view === "5d" ? fiveDayDates(date) : weekDates(date, weekStart);
@@ -281,7 +305,11 @@ async function MultiDayView({
   const [blocksRes, freeResults, cpResults, recentRes] = await Promise.all([
     Promise.allSettled([getBlocksInRange(startUtc, endUtc)]).then((r) => r[0]),
     Promise.allSettled(dayWindows.map((w) => getFreeSlots(w.startUtc, w.endUtc, 5))),
-    Promise.allSettled(dayWindows.map((w) => getCheckpointsForDate(w.date))),
+    Promise.allSettled(
+      dayWindows.map((w) =>
+        checkpointsHidden ? Promise.resolve<Checkpoint[]>([]) : getCheckpointsForDate(w.date),
+      ),
+    ),
     Promise.allSettled([getRecentTags()]).then((r) => r[0]),
   ]);
 
@@ -326,6 +354,7 @@ async function MultiDayView({
         today={today}
         filterLabels={filterLabels}
         labelsQuery={labelsQuery}
+        checkpointsHidden={checkpointsHidden}
         recentTags={recentTags}
         view={view}
       />

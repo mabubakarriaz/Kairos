@@ -16,9 +16,11 @@ import {
   snapMinutes,
 } from "@/lib/time";
 import { matchesLabelFilter } from "@/lib/labels";
+import { setCheckpointsHiddenCookie } from "@/lib/prefs";
 import type { Checkpoint, FreeSlot, ScheduledBlock } from "@/lib/types";
 import { InlineComposer } from "./InlineComposer";
 import { CheckpointEditor } from "./CheckpointEditor";
+import { CheckpointToggle } from "./CheckpointToggle";
 import { LabelFilter } from "./LabelFilter";
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
@@ -32,6 +34,7 @@ interface Props {
   blocks: ScheduledBlock[];
   freeSlots: FreeSlot[];
   checkpoints: Checkpoint[];
+  checkpointsHidden: boolean;
   isToday: boolean;
   isPast: boolean;
   filterLabels: string[];
@@ -67,6 +70,7 @@ export function DayColumn({
   blocks,
   freeSlots,
   checkpoints,
+  checkpointsHidden,
   isToday,
   isPast,
   filterLabels,
@@ -236,6 +240,12 @@ export function DayColumn({
       } else if (e.key === "c" || e.key === "C") {
         e.preventDefault();
         setComposer(null);
+        // Placing a checkpoint while the layer is hidden would drop it out of
+        // sight. Reveal the layer first so the new one — and the rest — show.
+        if (checkpointsHidden) {
+          setCheckpointsHiddenCookie(false);
+          router.refresh();
+        }
         const seed = isToday && nowMin != null ? Math.max(0, nowMin) : 9 * 60;
         setCpEdit({ mode: "new", topMin: snapMinutes(seed) });
       }
@@ -243,7 +253,7 @@ export function DayColumn({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [freeSlots, blocksByStart, dayStartUtc, nowMin, isPast, isToday]);
+  }, [freeSlots, blocksByStart, dayStartUtc, nowMin, isPast, isToday, checkpointsHidden]);
 
   function pickComposerTarget(): ComposerState {
     // Today: first free slot ending after now. Else: first free slot of the day.
@@ -893,6 +903,8 @@ export function DayColumn({
       <div className="status-line">
         <div className="status-line-left">
           <LabelFilter filterLabels={filterLabels} inViewLabels={inViewLabels} />
+          <span className="status-line-sep" aria-hidden="true" />
+          <CheckpointToggle hidden={checkpointsHidden} />
           <span className="status-line-sep" aria-hidden="true" />
           <StatusLeft
             isPast={isPast}

@@ -285,20 +285,39 @@ export interface DayStats {
 }
 
 export function computeDayStats(blocks: ScheduledBlock[], dayStartUtc: string): DayStats {
-  let bookedMin = 0;
   const labelMin = new Map<string, number>();
   const dayStartMs = new Date(dayStartUtc).getTime();
   const dayEndMs = dayStartMs + DAY_MINUTES * 60_000;
+  // Clip each block to the day window. Per-label minutes are summed as-is
+  // (labels are orthogonal dimensions, so they can overlap); booked minutes
+  // are the *union* of the intervals, so overlapping blocks — e.g. an all-day
+  // gcal "busy" marker with meetings inside it — count once, not twice.
+  const spans: Array<[number, number]> = [];
   for (const b of blocks) {
     const s = Math.max(dayStartMs, new Date(b.startUtc).getTime());
     const e = Math.min(dayEndMs, new Date(b.endUtc).getTime());
     if (e <= s) continue;
+    spans.push([s, e]);
     const dur = (e - s) / 60_000;
-    bookedMin += dur;
     for (const t of b.tags) {
       labelMin.set(t, (labelMin.get(t) ?? 0) + dur);
     }
   }
+  spans.sort((a, b) => a[0] - b[0]);
+  let bookedMin = 0;
+  let curStart = 0;
+  let curEnd = 0;
+  for (const [s, e] of spans) {
+    if (s > curEnd) {
+      bookedMin += curEnd - curStart;
+      curStart = s;
+      curEnd = e;
+    } else if (e > curEnd) {
+      curEnd = e;
+    }
+  }
+  bookedMin += curEnd - curStart;
+  bookedMin /= 60_000;
   const byLabel = Array.from(labelMin, ([label, minutes]) => ({ label, minutes })).sort(
     (a, b) => b.minutes - a.minutes || a.label.localeCompare(b.label),
   );

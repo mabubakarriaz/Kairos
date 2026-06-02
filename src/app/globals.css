@@ -281,9 +281,15 @@
     background-color: rgb(var(--gcal));
     color: rgb(var(--gcal-ink));
     cursor: default;
+    /* A 1px ring in the canvas colour: invisible against the page, but cuts a clean
+       gap the moment one external event overlaps another (busy block + inner meeting,
+       double-bookings) so stacked graphite blocks read as distinct cards, not a mass. */
+    box-shadow: 0 0 0 1px rgb(var(--bg));
   }
   .block-gcal:hover {
     background-color: rgb(var(--gcal-strong));
+    /* Lift the hovered event above its neighbours so its full extent is legible. */
+    z-index: 16;
   }
   .block-gcal .block-time {
     color: rgb(var(--gcal-ink) / 0.78);
@@ -310,7 +316,10 @@
     letter-spacing: -0.005em;
   }
   .block-title-input {
-    @apply block w-full min-w-0 bg-transparent text-[13px] font-semibold leading-tight outline-none;
+    /* `display: block` direct: under Turbopack's Lightning CSS, `@apply block`
+       resolves to the `.block` *component*, not the display utility. */
+    @apply w-full min-w-0 bg-transparent text-[13px] font-semibold leading-tight outline-none;
+    display: block;
     color: rgb(var(--accent-strong));
     /* Pixel-parity with .block-title: inherit the parent's font + features so the
        text doesn't shift or change shape when entering edit mode. Platform input
@@ -348,7 +357,8 @@
     color: rgb(var(--accent-strong) / 0.6);
   }
   .block-labels-input {
-    @apply block min-w-0 flex-1 bg-transparent text-[10px] leading-none outline-none;
+    @apply min-w-0 flex-1 bg-transparent text-[10px] leading-none outline-none;
+    display: block;
     color: rgb(var(--accent-strong));
     font-family: var(--font-mono-stack);
     font-variant-numeric: tabular-nums;
@@ -1013,7 +1023,8 @@
     opacity: 0;
   }
   .block-tag-dot {
-    @apply block h-1.5 w-1.5 rounded-full;
+    @apply h-1.5 w-1.5 rounded-full;
+    display: block;
     background-color: rgb(var(--accent-strong) / 0.55);
   }
   .block-tag-dots-more {
@@ -1098,20 +1109,28 @@
   .month-cell[data-today="true"] .month-cell-num {
     color: rgb(var(--accent-strong));
   }
-  .month-cell[data-otherMonth="true"] .month-cell-num {
+  .month-cell[data-other-month="true"] .month-cell-num {
     color: rgb(var(--text-faint) / 0.55);
   }
   .month-cell[data-past="true"]:not([data-today="true"]) .month-cell-num {
     color: rgb(var(--text-faint));
   }
+  /* Block dots — one small ochre mark per block, wrapping; "+N" carries the
+     overflow. The density reads at a glance; the popover names them. gcal dots
+     ride the cool graphite (the Borrowed-Time Rule). */
   .month-cell-dots {
     @apply flex flex-wrap items-center gap-1;
   }
+  /* NB: `display: block` is set directly, not via `@apply block`. This project
+     has a `.block` *component* class (the time block); under Turbopack's
+     Lightning CSS, `@apply block` resolves to that component, not the display
+     utility, and drags absolute-positioning + padding onto the dot. */
   .month-cell-dot {
-    @apply block h-1.5 w-1.5 rounded-full;
-    background-color: rgb(var(--accent-strong) / 0.75);
+    @apply h-1.5 w-1.5 rounded-full;
+    display: block;
+    background-color: rgb(var(--accent-strong) / 0.8);
   }
-  .month-cell[data-otherMonth="true"] .month-cell-dot {
+  .month-cell[data-other-month="true"] .month-cell-dot {
     background-color: rgb(var(--text-faint) / 0.45);
   }
   .month-cell[data-past="true"]:not([data-today="true"]) .month-cell-dot {
@@ -1120,7 +1139,6 @@
   .month-cell-dot[data-muted="true"] {
     background-color: rgb(var(--text-faint) / 0.35);
   }
-  /* External calendar dots ride the cool graphite, mirroring .block-gcal. */
   .month-cell-dot[data-gcal="true"] {
     background-color: rgb(var(--gcal-ink) / 0.7);
   }
@@ -1128,7 +1146,94 @@
     background-color: rgb(var(--gcal-ink) / 0.32);
   }
   .month-cell-dots-more {
-    @apply ml-1 text-[10px] font-medium leading-none;
+    @apply ml-0.5 text-[10px] font-medium leading-none;
+    color: rgb(var(--text-faint));
+  }
+
+  /* Detail popover — quiet paper-lift listing the day's blocks on hover/focus.
+     Fixed to the viewport (escapes the grid clip) and pointer-events:none so it
+     never intercepts the cell's click. A transient hover state, so a soft warm
+     shadow is legitimate (Shadow-Means-State). */
+  .month-pop {
+    @apply pointer-events-none fixed z-50 rounded-md border border-hairline bg-surface px-3 py-2.5;
+    box-shadow:
+      0 1px 0 rgb(var(--shadow) / 0.04),
+      0 12px 28px -10px rgb(var(--shadow) / 0.28);
+    animation: monthPopIn 140ms var(--ease-snap);
+  }
+  .month-pop[data-above="true"] {
+    transform-origin: bottom;
+  }
+  @keyframes monthPopIn {
+    from {
+      opacity: 0;
+      transform: translateY(-3px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .month-pop[data-above="true"] {
+    animation-name: monthPopInUp;
+  }
+  @keyframes monthPopInUp {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .month-pop-head {
+    @apply mb-1.5 flex items-baseline justify-between gap-3 border-b border-hairline pb-1.5;
+  }
+  .month-pop-date {
+    @apply text-[11px] font-semibold;
+    color: rgb(var(--text));
+    letter-spacing: -0.005em;
+  }
+  .month-pop-stat {
+    @apply text-[10px] font-medium;
+    color: rgb(var(--text-faint));
+  }
+  .month-pop-list {
+    @apply flex flex-col gap-0.5;
+  }
+  .month-pop-row {
+    @apply flex items-baseline gap-2 overflow-hidden;
+  }
+  .month-pop-dot {
+    @apply mt-px h-1.5 w-1.5 shrink-0 self-center rounded-full;
+    background-color: rgb(var(--accent-strong) / 0.85);
+  }
+  .month-pop-row[data-gcal="true"] .month-pop-dot {
+    background-color: rgb(var(--gcal-ink) / 0.8);
+  }
+  .month-pop-row[data-muted="true"] .month-pop-dot {
+    background-color: rgb(var(--text-faint) / 0.5);
+  }
+  .month-pop-time {
+    @apply w-10 shrink-0 text-[10px] font-medium;
+    color: rgb(var(--accent-strong));
+  }
+  .month-pop-row[data-gcal="true"] .month-pop-time {
+    color: rgb(var(--gcal-ink));
+  }
+  .month-pop-row[data-muted="true"] .month-pop-time {
+    color: rgb(var(--text-faint));
+  }
+  .month-pop-title {
+    @apply min-w-0 flex-1 truncate text-[12px] leading-tight;
+    color: rgb(var(--text));
+  }
+  .month-pop-row[data-muted="true"] .month-pop-title {
+    color: rgb(var(--text-faint));
+  }
+  .month-pop-more {
+    @apply mt-0.5 pl-[1.125rem] text-[10px] font-medium leading-none;
     color: rgb(var(--text-faint));
   }
   /* Booked-share bar — a 100% width sediment line anchored to the cell's
@@ -1137,11 +1242,14 @@
      Empty days show a clean graphite hairline; fully-booked days show a solid
      ochre bar. The split is what reads at a glance. */
   .month-cell-bar {
-    @apply pointer-events-none absolute left-2 right-2 bottom-1.5 block h-[3px] overflow-hidden rounded-full;
+    /* `display: block` direct, not `@apply block` — see the note on .month-cell-dot. */
+    @apply pointer-events-none absolute left-2 right-2 bottom-1.5 h-[3px] overflow-hidden rounded-full;
+    display: block;
     background-color: rgb(var(--free) / 0.32);
   }
   .month-cell-bar-booked {
-    @apply block h-full rounded-full;
+    @apply h-full rounded-full;
+    display: block;
     background-color: rgb(var(--accent) / 0.7);
     transition: width 220ms var(--ease-snap);
   }
@@ -1151,10 +1259,10 @@
   .month-cell[data-today="true"] .month-cell-bar-booked {
     background-color: rgb(var(--accent));
   }
-  .month-cell[data-otherMonth="true"] .month-cell-bar {
+  .month-cell[data-other-month="true"] .month-cell-bar {
     background-color: rgb(var(--text-faint) / 0.18);
   }
-  .month-cell[data-otherMonth="true"] .month-cell-bar-booked {
+  .month-cell[data-other-month="true"] .month-cell-bar-booked {
     background-color: rgb(var(--text-faint) / 0.45);
   }
   .month-cell[data-past="true"]:not([data-today="true"]) .month-cell-bar-booked {
@@ -1396,7 +1504,8 @@
     color: rgb(var(--text-faint));
   }
   .filter-popover-clear {
-    @apply mt-0.5 block w-full rounded-sm px-2 py-1 text-left text-[10px] uppercase tracking-[0.14em];
+    @apply mt-0.5 w-full rounded-sm px-2 py-1 text-left text-[10px] uppercase tracking-[0.14em];
+    display: block;
     @apply transition-colors duration-100 ease-snap;
     color: rgb(var(--text-faint));
     border-top: 1px solid rgb(var(--border));
@@ -1523,7 +1632,7 @@
     border-bottom: 0;
   }
   .cal-row[data-editing] {
-    @apply block;
+    display: block;
   }
   .cal-row[data-disabled] .cal-row-text {
     opacity: 0.55;
@@ -1582,7 +1691,8 @@
     box-shadow: 0 0 0 1px rgb(var(--accent) / 0.55);
   }
   .cal-toggle-knob {
-    @apply block rounded-full;
+    @apply rounded-full;
+    display: block;
     width: 14px;
     height: 14px;
     background-color: rgb(var(--accent-fg));
@@ -2277,3 +2387,4 @@
     }
   }
 }
+

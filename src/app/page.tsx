@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { DateToolbar } from "@/components/DateToolbar";
 import { DayColumn } from "@/components/DayColumn";
 import { WeekColumns, type WeekDay } from "@/components/WeekColumns";
-import { MonthGrid, type MonthCell } from "@/components/MonthGrid";
+import { MonthGrid, type MonthCellData } from "@/components/MonthGrid";
 import { getBlocksInRange } from "@/server/schedule";
 import { syncCalendarsIfStale } from "@/server/calendar-sync";
 import { getFreeSlots } from "@/server/freeslots";
@@ -370,7 +370,7 @@ async function MonthView({
   const allBlocks: ScheduledBlock[] =
     blocksRes.status === "fulfilled" ? blocksRes.value : [];
 
-  const cells: MonthCell[] = dayWindows.map((w) => {
+  const cells: MonthCellData[] = dayWindows.map((w) => {
     const wStartMs = new Date(w.startUtc).getTime();
     const wEndMs = new Date(w.endUtc).getTime();
     const dayBlocks = allBlocks.filter((b) => {
@@ -408,7 +408,7 @@ function MonthStatsLine({
   anchorDate,
   today,
 }: {
-  cells: MonthCell[];
+  cells: MonthCellData[];
   anchorDate: string;
   today: string;
 }) {

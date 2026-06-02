@@ -293,6 +293,7 @@ A read-only sibling of the Time Block, synced from an attached Google calendar. 
 - **Calendar mark:** a 12px stroke-only calendar glyph in the top-right corner at 50% ink opacity, where a Kairos block keeps its delete-X. It is the one tell that this time isn't yours to move; the title pads right to clear it.
 - **Label:** the block wears its calendar's assigned label (`#tkxel`, `#personal`) as its only tag, graphite-tinted in day view and a graphite dot in week/month view.
 - **Read-only:** no grab cursor, not focusable for editing, no delete or resize handle, no `block-active` amber takeover when the now-line crosses it. Interaction is gated on `source === 'kairos'` everywhere. Calendar events may overlap your blocks (the no-overlap constraint exempts them) but still count as busy for free-slots and booked/open day stats.
+- **Overlap separation:** a 1px ring in the **canvas** colour (`box-shadow: 0 0 0 1px rgb(var(--bg))`). Invisible against the page, but the moment one external event overlaps another (a "Not Available" busy block with meetings inside it, or double-bookings) it cuts a clean gap so stacked graphite blocks read as distinct cards instead of one mass. Hovering a calendar block lifts it (`z-index`) so its full extent is legible. (Full side-by-side lane-splitting of overlapping events is a deferred follow-up; this keeps them legible without it.)
 
 ### Free-Slot Marker
 

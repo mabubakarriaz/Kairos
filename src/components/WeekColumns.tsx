@@ -23,6 +23,15 @@ import { InlineComposer } from "./InlineComposer";
 import { CheckpointEditor } from "./CheckpointEditor";
 import { CheckpointToggle } from "./CheckpointToggle";
 import { LabelFilter } from "./LabelFilter";
+import { useBlockTooltip } from "./BlockTooltip";
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
 const GRID_HEIGHT = DAY_MINUTES * PX_PER_MIN; // 2304
@@ -80,6 +89,7 @@ export function WeekColumns({
   view,
 }: Props) {
   const router = useRouter();
+  const tip = useBlockTooltip();
   const todayIdx = days.findIndex((d) => d.date === today);
   const isPastByCol = useMemo(() => days.map((d) => d.date < today), [days, today]);
   const inViewLabels = useMemo(
@@ -145,10 +155,62 @@ export function WeekColumns({
     };
   }, [todayIdx, days]);
 
+  // Center today's now-line in the viewport — driven by the "Today" control.
+  const scrollToNowLine = useCallback(
+    (behavior: ScrollBehavior): boolean => {
+      const el = scrollRef.current;
+      if (!el || todayIdx < 0) return false;
+      const dayStartMs = new Date(days[todayIdx].dayStartUtc).getTime();
+      const now = (Date.now() - dayStartMs) / 60_000;
+      if (now < 0 || now > DAY_MINUTES) return false;
+      const top = now * PX_PER_MIN - el.clientHeight / 2;
+      el.scrollTo({ top: Math.max(0, top), behavior });
+      return true;
+    },
+    [todayIdx, days],
+  );
+
+  // Only clear the one-shot flag if we actually scrolled — see the day-view note.
+  useEffect(() => {
+    const onGoto = () => {
+      if (scrollToNowLine(prefersReducedMotion() ? "auto" : "smooth")) {
+        try {
+          sessionStorage.removeItem("kairos:goto-now");
+        } catch {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener("kairos:goto-now", onGoto);
+    return () => window.removeEventListener("kairos:goto-now", onGoto);
+  }, [scrollToNowLine]);
+
+  // Consume the one-shot "Today" flag: if set and today is in range, jump (instant)
+  // to the now-line and clear it. Returns whether it owned this paint; leaves the
+  // flag when today isn't in range so the incoming range can claim it.
+  const consumeGotoNow = useCallback((): boolean => {
+    let pending = false;
+    try {
+      pending = sessionStorage.getItem("kairos:goto-now") === "1";
+    } catch {
+      // ignore
+    }
+    if (!pending) return false;
+    if (!scrollToNowLine("auto")) return false;
+    try {
+      sessionStorage.removeItem("kairos:goto-now");
+    } catch {
+      // ignore
+    }
+    return true;
+  }, [scrollToNowLine]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    if (consumeGotoNow()) return;
     const viewport = el.clientHeight;
+
     let targetMin: number;
     if (todayIdx >= 0) {
       const dayStartMs = new Date(days[todayIdx].dayStartUtc).getTime();
@@ -175,6 +237,14 @@ export function WeekColumns({
     // mount only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The displayed range changed in place (no remount), e.g. clicking "Today" from
+  // another week. The mount effect won't re-run, so consume the flag here too. On
+  // the initial mount this runs after the mount effect, which already cleared it.
+  const leadDate = days[0]?.date;
+  useEffect(() => {
+    consumeGotoNow();
+  }, [leadDate, consumeGotoNow]);
 
   const blocksByCol = useMemo(
     () =>
@@ -318,6 +388,7 @@ export function WeekColumns({
     if (editingId === block.id) return;
     e.preventDefault();
     setComposer(null);
+    tip.hide();
 
     const dayStartUtc = days[srcColIdx].dayStartUtc;
     const origTop = minutesFromDayStart(block.startUtc, dayStartUtc);
@@ -437,6 +508,7 @@ export function WeekColumns({
     e.stopPropagation();
     setComposer(null);
     setEditingId(null);
+    tip.hide();
 
     const dayStartUtc = days[colIdx].dayStartUtc;
     const topMin = minutesFromDayStart(block.startUtc, dayStartUtc);
@@ -599,6 +671,7 @@ export function WeekColumns({
   function onBlockKeyDown(e: React.KeyboardEvent, block: ScheduledBlock, colIdx: number) {
     if (block.source !== "kairos" || isPastByCol[colIdx] || pendingId) return;
     if (editingId === block.id) return;
+    tip.hide(); // a moving/edited block shouldn't keep a tooltip at a stale spot
 
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -905,11 +978,22 @@ export function WeekColumns({
                         .filter(Boolean)
                         .join(" ");
 
+                      const tipHandlers =
+                        !isEditing && !drag
+                          ? tip.anchorProps({
+                              block: b,
+                              startMin: topMin,
+                              endMin: topMin + dur,
+                              nowMin: isTodayCol ? nowMin : null,
+                            })
+                          : undefined;
+
                       return (
                         <div
                           key={b.id}
                           className={cls}
                           style={{ top: topMin * PX_PER_MIN, height }}
+                          {...tipHandlers}
                           onPointerDown={(e) => startDrag(e, b, i)}
                           onKeyDown={movable ? (e) => onBlockKeyDown(e, b, i) : undefined}
                           tabIndex={movable ? 0 : undefined}
@@ -1058,6 +1142,8 @@ export function WeekColumns({
         </div>
       </div>
 
+      {tip.tooltipNode}
+
       <div className="status-line">
         <div className="status-line-left">
           <LabelFilter filterLabels={filterLabels} inViewLabels={inViewLabels} />
@@ -1158,7 +1244,6 @@ function BlockTagDots({ tags }: { tags: string[] }) {
     <div
       className="block-tag-dots"
       aria-label={`Labels: ${tags.map((t) => `#${t}`).join(", ")}`}
-      title={tags.map((t) => `#${t}`).join(" ")}
     >
       {visible.map((t) => (
         <span key={t} className="block-tag-dot" aria-hidden="true" />

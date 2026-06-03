@@ -579,6 +579,75 @@
     opacity: 0;
   }
 
+  /* ── Block detail tooltip — the full title / time / labels a short block clips,
+     surfaced on hover or keyboard focus. Same vocabulary as the month-view detail
+     popover: fixed to the viewport (escapes the grid clip), pointer-events:none so
+     it never intercepts a drag, and a soft warm shadow earned by being a transient
+     state. The gcal variant wears the cool graphite ink. */
+  .block-tip {
+    @apply pointer-events-none fixed z-50 rounded-md border border-hairline bg-surface px-3 py-2;
+    box-shadow:
+      0 1px 0 rgb(var(--shadow) / 0.04),
+      0 12px 28px -10px rgb(var(--shadow) / 0.28);
+    animation: blockTipIn 130ms var(--ease-snap);
+  }
+  @keyframes blockTipIn {
+    from {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .block-tip-title {
+    @apply text-[12px] font-semibold leading-snug;
+    color: rgb(var(--accent-strong));
+    letter-spacing: -0.005em;
+  }
+  .block-tip[data-gcal] .block-tip-title {
+    color: rgb(var(--gcal-ink));
+  }
+  .block-tip-time {
+    @apply mt-1 text-[11px] leading-none;
+    color: rgb(var(--accent-strong) / 0.75);
+  }
+  .block-tip[data-gcal] .block-tip-time {
+    color: rgb(var(--gcal-ink) / 0.78);
+  }
+  .block-tip-sep {
+    color: rgb(var(--accent-strong) / 0.4);
+  }
+  .block-tip[data-gcal] .block-tip-sep {
+    color: rgb(var(--gcal-ink) / 0.4);
+  }
+  /* When now is inside the block, the "X left" tail rides the same ember as the
+     now-line — one fact, one colour, mirrored from .block-time-tail. */
+  .block-tip-tail[data-active] {
+    color: rgb(var(--now));
+  }
+  .block-tip-meta {
+    @apply mt-1.5 flex flex-col gap-0.5;
+  }
+  .block-tip-tags {
+    @apply text-[10px] leading-tight;
+    color: rgb(var(--accent-strong) / 0.7);
+  }
+  .block-tip-recur {
+    @apply text-[10px] leading-none;
+    color: rgb(var(--text-faint));
+  }
+  .block-tip-cal {
+    @apply text-[11px] font-medium leading-tight;
+    color: rgb(var(--gcal-ink));
+  }
+  .block-tip-ro {
+    @apply text-[10px] uppercase leading-none;
+    letter-spacing: 0.1em;
+    color: rgb(var(--gcal-ink) / 0.6);
+  }
+
   /* ── Checkpoints — scalar day-dividers. A 1px solid hairline across the column,
      a small horizontal tick in the gutter at the line's vertical center, and a
      right-anchored label tag whose `surface` background masks the line behind the

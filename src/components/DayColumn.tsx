@@ -22,6 +22,15 @@ import { InlineComposer } from "./InlineComposer";
 import { CheckpointEditor } from "./CheckpointEditor";
 import { CheckpointToggle } from "./CheckpointToggle";
 import { LabelFilter } from "./LabelFilter";
+import { useBlockTooltip } from "./BlockTooltip";
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 const HOUR_PX = 60 * PX_PER_MIN; // 96
 const GRID_HEIGHT = DAY_MINUTES * PX_PER_MIN; // 2304
@@ -78,6 +87,7 @@ export function DayColumn({
 }: Props) {
   const router = useRouter();
   const dayStartMs = new Date(dayStartUtc).getTime();
+  const tip = useBlockTooltip();
 
   const [drag, setDrag] = useState<DragState>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -129,14 +139,70 @@ export function DayColumn({
     };
   }, [isToday, dayStartMs]);
 
-  // First-paint scroll. On today, if a block is currently in flight, center the
-  // viewport on it — the user lands on the task that's happening right now.
-  // Otherwise anchor 60 minutes above the current minute. Past/future days fall
-  // back to a neutral 6am anchor.
+  // Center the now-line in the viewport. Used by the "Today" control (via the
+  // `kairos:goto-now` event) and on mount when arriving from a "Today" click.
+  const scrollToNowLine = useCallback(
+    (behavior: ScrollBehavior): boolean => {
+      const el = scrollRef.current;
+      if (!el || !isToday) return false;
+      const now = (Date.now() - dayStartMs) / 60_000;
+      if (now < 0 || now > DAY_MINUTES) return false;
+      const top = now * PX_PER_MIN - el.clientHeight / 2;
+      el.scrollTo({ top: Math.max(0, top), behavior });
+      return true;
+    },
+    [isToday, dayStartMs],
+  );
+
+  // "Today" clicked while this grid stays mounted: smooth-scroll to the now-line.
+  // Only clear the one-shot flag if we actually scrolled — the event also reaches
+  // the outgoing grid on a cross-day click, which must leave the flag for the
+  // freshly-mounted today grid to consume.
+  useEffect(() => {
+    const onGoto = () => {
+      if (scrollToNowLine(prefersReducedMotion() ? "auto" : "smooth")) {
+        try {
+          sessionStorage.removeItem("kairos:goto-now");
+        } catch {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener("kairos:goto-now", onGoto);
+    return () => window.removeEventListener("kairos:goto-now", onGoto);
+  }, [scrollToNowLine]);
+
+  // Consume the one-shot "Today" flag: if set and we're on today, jump (instant —
+  // any motion was the navigation itself) to the now-line and clear it. Returns
+  // whether it owned this paint. Leaves the flag untouched when not today, so an
+  // outgoing non-today grid can't swallow it before the today grid mounts.
+  const consumeGotoNow = useCallback((): boolean => {
+    let pending = false;
+    try {
+      pending = sessionStorage.getItem("kairos:goto-now") === "1";
+    } catch {
+      // ignore
+    }
+    if (!pending) return false;
+    if (!scrollToNowLine("auto")) return false;
+    try {
+      sessionStorage.removeItem("kairos:goto-now");
+    } catch {
+      // ignore
+    }
+    return true;
+  }, [scrollToNowLine]);
+
+  // First-paint scroll. A "Today" click takes precedence (now-line). Otherwise on
+  // today: if a block is in flight, center the viewport on it — the user lands on
+  // the task happening right now — else anchor 60 minutes above the current minute.
+  // Past/future days fall back to a neutral 6am anchor.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    if (consumeGotoNow()) return;
     const viewport = el.clientHeight;
+
     let targetMin: number;
     if (isToday) {
       const synchronousNow = (Date.now() - dayStartMs) / 60_000;
@@ -160,6 +226,14 @@ export function DayColumn({
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The day changed in place (no remount, since page.tsx renders the grid without
+  // a date key), e.g. clicking "Today" from a past/future day. The mount effect
+  // above won't re-run, so consume the flag here too. On the initial mount this
+  // runs after the mount effect, which already cleared the flag — so it no-ops.
+  useEffect(() => {
+    consumeGotoNow();
+  }, [date, consumeGotoNow]);
 
   const blocksByStart = useMemo(
     () =>
@@ -280,6 +354,7 @@ export function DayColumn({
     if (editingId === block.id) return;
     e.preventDefault();
     setComposer(null);
+    tip.hide();
 
     const origTop = minutesFromDayStart(block.startUtc, dayStartUtc);
     const durMin = durationMin(block);
@@ -367,6 +442,7 @@ export function DayColumn({
     e.stopPropagation();
     setComposer(null);
     setEditingId(null);
+    tip.hide();
 
     const topMin = minutesFromDayStart(block.startUtc, dayStartUtc);
     const origDur = durationMin(block);
@@ -513,6 +589,7 @@ export function DayColumn({
   function onBlockKeyDown(e: React.KeyboardEvent, block: ScheduledBlock) {
     if (block.source !== "kairos" || isPast || pendingId) return;
     if (editingId === block.id) return; // the title input owns keys while editing
+    tip.hide(); // a moving/edited block shouldn't keep a tooltip at a stale spot
 
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -753,11 +830,24 @@ export function DayColumn({
               .filter(Boolean)
               .join(" ");
 
+            // Detail tooltip on hover/focus — but not while editing (the block is
+            // a tiny composer) or mid-drag (a moving block + a fixed panel jar).
+            const tipHandlers =
+              !isEditing && !drag
+                ? tip.anchorProps({
+                    block: b,
+                    startMin: topMin,
+                    endMin: topMin + dur,
+                    nowMin: isToday ? nowMin : null,
+                  })
+                : undefined;
+
             return (
               <div
                 key={b.id}
                 className={cls}
                 style={{ top: topMin * PX_PER_MIN, height }}
+                {...tipHandlers}
                 onPointerDown={(e) => startDrag(e, b)}
                 onKeyDown={movable ? (e) => onBlockKeyDown(e, b) : undefined}
                 tabIndex={movable ? 0 : undefined}
@@ -898,6 +988,8 @@ export function DayColumn({
           )}
         </div>
       </div>
+
+      {tip.tooltipNode}
 
       {/* Bottom status line */}
       <div className="status-line">

@@ -11,6 +11,7 @@ import {
   weekDates,
 } from "@/lib/time";
 import { zoneFor } from "@/lib/timezone";
+import { TodayLink } from "./TodayLink";
 
 type View = "day" | "5d" | "week" | "month";
 
@@ -109,15 +110,11 @@ export function DateToolbar({
               <path d="M14 6l-6 6 6 6" />
             </svg>
           </Link>
-          <Link
+          <TodayLink
             className="glyph-btn px-1.5 text-[11px] font-medium"
             href={todayHref}
-            aria-label="Go to today"
-            aria-current={isToday ? "true" : undefined}
-            style={{ width: "auto" }}
-          >
-            Today
-          </Link>
+            isToday={isToday}
+          />
           <Link className="glyph-btn" href={nextHref} aria-label={`Next ${VIEW_LABEL[view].toLowerCase()}`}>
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M10 6l6 6-6 6" />

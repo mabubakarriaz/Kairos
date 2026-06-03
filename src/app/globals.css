@@ -1471,13 +1471,6 @@
   .day-stats-sep {
     color: rgb(var(--text-faint) / 0.55);
   }
-  .day-stats-divider {
-    @apply mx-1 inline-block h-3 w-px align-middle;
-    background-color: rgb(var(--border));
-  }
-  .day-stats-tag {
-    color: rgb(var(--accent-strong) / 0.7);
-  }
 
   /* ── Status-line layout for the filter ────────────────────────────────────── */
   .status-line-left {
@@ -1643,6 +1636,21 @@
   }
   .settings-section-bar {
     @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-2;
+  }
+  /* An inline cross-link in prose (e.g. Settings → Reports). Amber, underlined
+     on the hover/focus the same way a link should read; no button chrome. */
+  .settings-inline-link {
+    @apply underline decoration-from-font underline-offset-2;
+    color: rgb(var(--accent-strong));
+    text-decoration-color: rgb(var(--accent) / 0.4);
+    transition: text-decoration-color 150ms var(--ease-snap);
+  }
+  .settings-inline-link:hover {
+    text-decoration-color: rgb(var(--accent) / 0.8);
+  }
+  .settings-inline-link:focus-visible {
+    outline: none;
+    text-decoration-color: rgb(var(--accent-strong));
   }
 
   /* ── Calendar manager ───────────────────────────────────────────────────────
@@ -2295,6 +2303,90 @@
     width: 1.5px;
     background-color: rgb(var(--bg));
     transition: left 260ms var(--ease-snap);
+  }
+
+  /* ── Reports · label usage ──────────────────────────────────────────────────
+     The one report so far. Two bands under a shared range nav: budgeted labels
+     reuse the amber budget-meter (consumed vs allowed); unbudgeted labels get a
+     cool graphite bar sized against the heaviest peer — no allowance to consume,
+     so deliberately a different bar language. Same paper-and-hairline vocabulary
+     as /settings; no cards, no tiles. */
+  .report-usage {
+    @apply flex flex-col;
+  }
+  .report-empty {
+    @apply max-w-[60ch] text-[13px] leading-relaxed;
+    color: rgb(var(--text-muted));
+  }
+  /* A quiet typographic summary, not a hero metric. */
+  .report-lead {
+    @apply text-[11px] leading-none;
+    color: rgb(var(--text-faint));
+    letter-spacing: 0.02em;
+  }
+  .report-lead-strong {
+    color: rgb(var(--text));
+    font-weight: 500;
+  }
+  .report-lead-sep {
+    color: rgb(var(--text-faint) / 0.6);
+  }
+  /* Each band sits one level below the section head. */
+  .report-band {
+    @apply mt-6 flex flex-col gap-3.5;
+  }
+  .report-band:first-of-type {
+    @apply mt-5;
+  }
+  .report-band-head {
+    @apply flex items-baseline gap-2 text-[10px] font-medium uppercase leading-none;
+    color: rgb(var(--text-faint));
+    letter-spacing: 0.14em;
+  }
+  .report-band-count {
+    @apply text-[10px] font-normal;
+    color: rgb(var(--text-faint) / 0.7);
+    letter-spacing: 0;
+  }
+  .report-band-note {
+    @apply max-w-[60ch] text-[12px] leading-relaxed;
+    color: rgb(var(--text-faint));
+  }
+  .usage-list {
+    @apply flex list-none flex-col gap-4 p-0;
+  }
+  .usage-row {
+    @apply flex flex-col gap-1.5;
+  }
+  .usage-row-head {
+    @apply flex items-baseline justify-between gap-3;
+  }
+  /* Graphite, not amber — these carry no budget, so they read as logged time,
+     not consumption. */
+  .usage-row-tag {
+    @apply text-[13px] leading-none;
+    color: rgb(var(--text-muted));
+  }
+  .usage-row-figures {
+    @apply inline-flex items-baseline gap-2 text-[11px] leading-none;
+    letter-spacing: 0.02em;
+  }
+  .usage-row-amount {
+    color: rgb(var(--text));
+    font-weight: 500;
+  }
+  .usage-row-share {
+    color: rgb(var(--text-faint));
+  }
+  .usage-bar {
+    @apply relative w-full overflow-hidden rounded-full;
+    height: 4px;
+    background-color: rgb(var(--free) / 0.16);
+  }
+  .usage-bar-fill {
+    @apply absolute left-0 top-0 h-full rounded-full;
+    background-color: rgb(var(--free) / 0.68);
+    transition: width 260ms var(--ease-snap);
   }
 
   /* ── Login stage — gates the schedule. The day you're locked out of glows

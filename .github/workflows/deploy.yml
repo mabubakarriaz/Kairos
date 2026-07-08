@@ -65,7 +65,7 @@ jobs:
           fi
           echo "Migration safety guard passed (${#files[@]} file(s) scanned)."
 
-      - uses: supabase/setup-cli@v2
+      - uses: supabase/setup-cli@v3
         with:
           # Pin an exact version: `latest` resolves via the GitHub API and gets
           # rate-limited on frequent runs ("Failed to resolve latest ... rate limit").
